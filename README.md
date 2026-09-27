@@ -162,7 +162,7 @@ The repository offers what the pipeline uses. Anything that reads the tree is on
 | --- | --- | --- |
 | Issues, Wiki, Projects | off | a drift report lands in `reports/skill-sync.md` and the skill's upstream bugs belong to `unclecode/crawl4ai`; the documentation is `docs/crawl4ai/`, not a wiki, and no board tracks the work |
 | Actions | on, `GITHUB_TOKEN` read-only by default | a workflow has to ask for `contents: write` itself (`skill-update.yml` does, `skill-check.yml` does not) |
-| CodeQL default setup (`python`, `actions`) | on | the three pipeline scripts are scanned on every push to `main` and every pull request |
+| CodeQL default setup (`python`, `actions`) | on, weekly | the three pipeline scripts are scanned on every push to `main`, every pull request, and on a weekly schedule |
 | Dependabot alerts and security updates | on | `requirements.txt` pins the two packages both gates introspect |
 | Dependabot version updates | `.github/dependabot.yml`, weekly | one pull request per ecosystem, gated by `skill-check` |
 | Secret scanning and push protection | on | the repository is public, so a leaked credential would be public with it |
