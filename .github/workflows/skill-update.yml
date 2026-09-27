@@ -134,9 +134,12 @@ jobs:
       - name: Verify before pushing
         # A push made with GITHUB_TOKEN does not trigger skill-check (GitHub suppresses workflow runs
         # for its own token), so the checks that gate a pull request run here too, before the commit.
+        # The API drift and style gates already ran inside update_skill.py above; lint is the one a
+        # run that reached a green verdict would otherwise skip.
         if: steps.probe.outputs.needed == 'true' && steps.sync.outcome == 'success'
         run: |
           set -euo pipefail
+          python -m ruff check .
           python -m skills_ref.cli validate .agents/skills/crawl4ai
           python -B scripts/sync_docs_repo.py --verify
 

@@ -1,6 +1,9 @@
 # Runtime dependencies of the skill pipeline and of the gates.
 # scripts/sync_docs_repo.py and the `--check` fast path need nothing but the standard library;
 # crawl4ai is what the gates introspect and what the probes crawl with; skills-ref is the Agent
-# Skills specification's own validator, run over the skill before anything is committed.
+# Skills specification's own validator, run over the skill before anything is committed; ruff is
+# the lint gate, pinned because a rule that lands in a later release would turn a green tree red
+# for a reason the pull request did not cause.
 crawl4ai>=0.9.4,<1
 skills-ref==0.1.1
+ruff==0.16.6

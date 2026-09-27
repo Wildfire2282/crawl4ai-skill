@@ -35,6 +35,11 @@ jobs:
       - name: Style gate
         run: python -B .style_check.py .agents/skills/crawl4ai
 
+      - name: Lint gate
+        # The rule families in ruff.toml; `docs/` is excluded there, so the upstream Markdown of the
+        # mirror is not linted as if it were this project's code.
+        run: python -m ruff check .
+
       - name: Agent Skills specification
         # The reference validator for the published spec: front matter, name, directory match,
         # description length. Pinned in requirements.txt; pip installs its console script as

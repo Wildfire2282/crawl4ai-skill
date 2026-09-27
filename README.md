@@ -19,7 +19,7 @@ flowchart LR
   pkg --> sync
   sync -->|stamps, coverage, report| skill[.agents/skills/crawl4ai]
   sync --> report[reports/skill-sync.md]
-  sync -->|gates| gate{check_api.py<br/>.style_check.py<br/>skills-ref}
+  sync -->|gates| gate{check_api.py<br/>.style_check.py<br/>ruff check<br/>skills-ref}
   gate -->|green| skill
   gate -->|red| report
   report -->|actions present| agent[agent CLI<br/>free models in order]
@@ -39,7 +39,7 @@ API request and nothing else:
 | fetch | `sync_docs_repo.py` — downloads only the pages whose blob id moved | skipped |
 | update | `update_skill.py` — stamps, coverage, gates, probes, report | skipped |
 | agent | only when the report lists an action; models from `scripts/agent-models.json`, tried in order, each attempt starting from the same restored tree | skipped |
-| push | the same checks a pull request gets (`skills-ref validate`, `sync_docs_repo.py --verify`) run first — a `GITHUB_TOKEN` push does not trigger `skill-check` — then the run commits what the pipeline owns and pushes to the branch the run was triggered on, only when the verdict is green | skipped |
+| push | the same checks a pull request gets (`ruff check`, `skills-ref validate`, `sync_docs_repo.py --verify`) run first — a `GITHUB_TOKEN` push does not trigger `skill-check` — then the run commits what the pipeline owns and pushes to the branch the run was triggered on, only when the verdict is green | skipped |
 
 A red verdict (drift, a failed gate, an action no model closed) pushes nothing and fails the run,
 with `reports/skill-sync.md` uploaded as an artifact. The next scheduled run starts from the same
@@ -67,7 +67,7 @@ committed state, so no change is ever marked as processed that was not.
 | `.github/dependabot.yml` | Version updates: a weekly pull request for `requirements.txt` and one for the workflow actions, each proving itself against `skill-check` before it can merge |
 | `.style_check.py` | Prose gate: pronouns, contractions, filler, emoji, a repeated version target. Exits non-zero on an issue |
 | `.gitattributes` | LF on both ends of git: the manifest hashes page bytes, so a checkout must not rewrite them |
-| `ruff.toml` | Lint standard for the scripts, the skill and the evals: the rule families a `ruff check` in the project root enforces. The mirror under `docs/` is upstream Markdown and is excluded; no workflow runs it |
+| `ruff.toml` | Lint standard for the scripts, the skill and the evals: the rule families `ruff check .` enforces in `skill-check` and before the unattended push. The mirror under `docs/` is upstream Markdown, not this project's code, and is excluded there |
 | `LICENSE` | Apache-2.0, the license of the upstream project this mirror is derived from |
 | `.evalcheck/` | Calibration runs for the eval suite and the recorded trigger transcripts; scratch, not shipped with the skill |
 
@@ -122,7 +122,7 @@ violation turns a gate red, the stamps stay as they were, and the report names t
 | Workflow | Trigger | Runs |
 | --- | --- | --- |
 | `.github/workflows/skill-update.yml` | weekly cron, manual (`auto` / `full` / `agent` / `deterministic`) | probe upstream, mirror what moved, update the skill, run the gates, run the agent pass over `prompts/skill-sync/` when there is an action to close (`agent` forces it on a quiet tree), then push to the triggered branch. Red verdict: nothing is pushed and the run fails with the report attached |
-| `.github/workflows/skill-check.yml` | push to `main`, pull request, manual | offline gates: API drift, style, `sync_docs_repo.py --verify`, the Agent Skills spec validator (`skills-ref==0.1.1`), and `update_skill.py --check-only` |
+| `.github/workflows/skill-check.yml` | push to `main`, pull request, manual | offline gates: API drift, style, lint (`ruff check .`), `sync_docs_repo.py --verify`, the Agent Skills spec validator (`skills-ref==0.1.1`), and `update_skill.py --check-only` |
 
 Prerequisites for the update workflow:
 
@@ -164,7 +164,7 @@ The repository offers what the pipeline uses. Anything that reads the tree is on
 | Issues, Wiki, Projects | off | a drift report lands in `reports/skill-sync.md` and the skill's upstream bugs belong to `unclecode/crawl4ai`; the documentation is `docs/crawl4ai/`, not a wiki, and no board tracks the work |
 | Actions | on, `GITHUB_TOKEN` read-only by default | a workflow has to ask for `contents: write` itself (`skill-update.yml` does, `skill-check.yml` does not) |
 | CodeQL default setup (`python`, `actions`) | on, weekly | the three pipeline scripts are scanned on every push to `main`, every pull request, and on a weekly schedule |
-| Dependabot alerts and security updates | on | `requirements.txt` pins the two packages both gates introspect |
+| Dependabot alerts and security updates | on | `requirements.txt` pins every package a gate runs — the `crawl4ai` under test, `skills-ref` and `ruff` |
 | Dependabot version updates | `.github/dependabot.yml`, weekly | one pull request per ecosystem, gated by `skill-check` |
 | Secret scanning and push protection | on | the repository is public, so a leaked credential would be public with it |
 | Branch ruleset on `main` | none | the update workflow merges itself by pushing; a rule that requires a pull request would stall the scheduled run |
