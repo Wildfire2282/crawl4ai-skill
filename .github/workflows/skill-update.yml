@@ -52,7 +52,7 @@ jobs:
           persist-credentials: false
 
       # Setup only: the interpreter is needed by the probe, and the probe itself needs no packages.
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
