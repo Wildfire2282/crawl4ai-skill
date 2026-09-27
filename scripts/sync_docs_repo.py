@@ -36,7 +36,7 @@ every other byte is the upstream file's.
 
 Usage   : python scripts/sync_docs_repo.py                    # incremental sync
           python scripts/sync_docs_repo.py --check             # fast path: 0 = in sync, 3 = work to do
-          python scripts/sync_docs_repo.py --verify            # offline: manifest, files, skill stamps
+          python scripts/sync_docs_repo.py --verify            # offline: page bytes, manifest, skill stamps
           python scripts/sync_docs_repo.py --full              # refetch every carried page
           python scripts/sync_docs_repo.py --reindex           # offline: apply the policy to files on disk
           python scripts/sync_docs_repo.py --commit <sha>      # pin a commit instead of the branch tip
@@ -113,7 +113,7 @@ DEFAULT_PAGE_REASON = "root-level page: only pages inside a carried section are 
 # A Markdown link to a sibling page: `[text](../core/x.md#anchor)` and friends. The mirror is flat, so
 # the target is re-pointed at its docs.crawl4ai.com URL.
 MD_LINK = re.compile(r"\]\((?!https?://|mailto:|#)([^)\s]+?)\.md(#[^)\s]*)?\)")
-FRONT_MATTER = re.compile(r"\A---\n(.*?\n)---\n\n?", re.S)
+FRONT_MATTER = re.compile(r"\A---\n(.*?\n)---\n\n?", re.DOTALL)
 SCRIPT = Path(__file__).name
 
 
@@ -165,7 +165,7 @@ def api(url: str, attempts: int = 3) -> Any:
 
 
 def latest_docs_commit(commit: str | None) -> tuple[str, str]:
-    """(sha, date) of the commit to mirror: the requested one, else the tip of main touching docs."""
+    """(sha, date) of the commit to mirror: the requested one, else the tip of develop touching docs."""
     if commit:
         data = api(f"https://api.github.com/repos/{REPO}/commits/{commit}")
         return data["sha"], data["commit"]["committer"]["date"][:10]
@@ -265,7 +265,7 @@ def read_page(path: Path) -> dict[str, str]:
     front, body = split_page(path.read_text(encoding="utf-8", errors="replace"))
 
     def field(name: str) -> str:
-        match = re.search(rf"^{name}:[ \t]*(.*)$", front, re.M)
+        match = re.search(rf"^{name}:[ \t]*(.*)$", front, re.MULTILINE)
         return match.group(1).strip().strip('"') if match else ""
 
     return {"source": field("source"), "title": field("title"), "fetched": field("fetched"), "body": body}
@@ -311,7 +311,7 @@ def skill_stamps(skill: Path) -> dict[str, str]:
     if not page.is_file():
         raise Failure(f"no SKILL.md at {page}")
     front, _ = split_page(page.read_text(encoding="utf-8"))
-    return {name: value for name, value in re.findall(r"^  ([a-z-]+):[ \t]*(.*)$", front, re.M)}
+    return {name: value for name, value in re.findall(r"^  ([a-z-]+):[ \t]*(.*)$", front, re.MULTILINE)}
 
 
 # --------------------------------------------------------------------------- outputs
@@ -327,12 +327,12 @@ def build_index(rows: list[tuple[str, str]], skipped: list[tuple[str, str]], com
     lines = [
         f"# Documentation mirror — {REPO} {DOCS_PREFIX.rstrip('/')}",
         "",
-        f"Mirror of <https://github.com/{REPO}/tree/{BRANCH}/{DOCS_PREFIX.rstrip('/')}>, taken "
-        f"{synced} by `scripts/{SCRIPT}` (project tool; independent of any agent skill).",
-        f"{len(rows)} pages from commit `{commit[:8]}` ({commit_date}); page bodies are the upstream "
-        "Markdown, with sibling-page links re-pointed at their docs.crawl4ai.com URL.",
-        f"Pages outside `SECTIONS` in `scripts/{SCRIPT}`, or listed in its `CURATED_OUT`, are not "
-        f"carried ({len(skipped)} upstream page(s) excluded by policy) — see below.",
+        (f"Mirror of <https://github.com/{REPO}/tree/{BRANCH}/{DOCS_PREFIX.rstrip('/')}>, taken "
+         f"{synced} by `scripts/{SCRIPT}` (project tool; independent of any agent skill)."),
+        (f"{len(rows)} pages from commit `{commit[:8]}` ({commit_date}); page bodies are the upstream "
+         "Markdown, with sibling-page links re-pointed at their docs.crawl4ai.com URL."),
+        (f"Pages outside `SECTIONS` in `scripts/{SCRIPT}`, or listed in its `CURATED_OUT`, are not "
+         f"carried ({len(skipped)} upstream page(s) excluded by policy) — see below."),
         "Files are flat (`<section>-<page>.md`) so every reference stays one level deep.",
         "",
         "Refresh from the project root:",
@@ -411,9 +411,14 @@ def sync(out: Path, sha: str, commit_date: str, full: bool, as_json: bool) -> in
         rel = local_name(repo_path)
         path = out / rel
         known = previous.get(rel) or {}
-        # The blob id identifies the upstream content; a page whose blob is unchanged is never
-        # downloaded, and a page whose body is unchanged keeps its file (and its `fetched` date).
-        body = None if not full and known.get("blob") == blob and path.is_file() else \
+        # The blob id identifies the upstream content; a page whose blob is unchanged is not
+        # downloaded again, and a page whose body is unchanged keeps its file (and its `fetched`
+        # date). The manifest's own hash decides whether the file on disk is that page: bytes that no
+        # longer hash to what the manifest recorded (a mangled checkout, a hand edit) are fetched
+        # again, so a mirror the gate reports as altered is repaired by the sync that follows it
+        # instead of being passed through for ever.
+        intact = path.is_file() and known.get("sha256") == sha256(path.read_bytes()).hexdigest()
+        body = None if not full and known.get("blob") == blob and intact else \
             absolutize(fetch_body(repo_path, sha), repo_path)
         if body is not None:
             fetched_pages.append(rel)
@@ -473,7 +478,12 @@ def sync(out: Path, sha: str, commit_date: str, full: bool, as_json: bool) -> in
 
 
 def consistency(out: Path, skill: Path) -> tuple[list[str], dict]:
-    """Reasons the mirror and the skill are not in sync, plus the values they were judged on."""
+    """Reasons the mirror and the skill are not in sync, plus the values they were judged on.
+
+    Every page the manifest names has to be on disk and to hash to the sha256 the manifest recorded;
+    the manifest's hashes are what `.gitattributes` keeps a checkout from rewriting, so this is where
+    a mangled or hand-edited page is caught before it reaches a commit.
+    """
     state = read_json(out / UPSTREAM_NAME)
     manifest = read_json(out / MANIFEST_NAME)
     stamps = skill_stamps(skill)
@@ -491,10 +501,20 @@ def consistency(out: Path, skill: Path) -> tuple[list[str], dict]:
     if manifest and stamps.get("docs-pages") != str(len(manifest)):
         reasons.append(f"the mirror holds {len(manifest)} pages, the skill is stamped "
                        f"{stamps.get('docs-pages', 'nothing')}")
-    missing = [rel for rel in manifest if not (out / rel).is_file()]
+    missing, altered = [], []
+    for rel, entry in sorted(manifest.items()):
+        page = out / rel
+        if not page.is_file():
+            missing.append(rel)
+        elif entry.get("sha256") and sha256(page.read_bytes()).hexdigest() != entry["sha256"]:
+            altered.append(rel)
     if missing:
         reasons.append(f"{len(missing)} page(s) named by the manifest are not on disk, e.g. {missing[0]}")
+    if altered:
+        reasons.append(f"{len(altered)} page(s) on disk do not hash to the manifest, e.g. {altered[0]}: "
+                       f"a run of scripts/{SCRIPT} restores the upstream bytes")
     return reasons, {"recorded_commit": state.get("commit", ""), "pages": len(manifest),
+                     "missing": len(missing), "altered": len(altered),
                      "skill_commit": stamps.get("docs-commit", ""),
                      "skill_snapshot": stamps.get("docs-snapshot", ""),
                      "snapshot": docs_snapshot(manifest)[:16] if manifest else ""}
@@ -602,9 +622,9 @@ def main() -> int:
     )
     parser.add_argument("--out", default=str(DEFAULT_OUT), help="mirror directory (default: docs/crawl4ai)")
     parser.add_argument("--skill", default=str(DEFAULT_SKILL), help="skill directory whose stamps are checked")
-    parser.add_argument("--commit", help="upstream commit to mirror (default: the tip of main touching docs/md_v2)")
+    parser.add_argument("--commit", help=f"upstream commit to mirror (default: the tip of {BRANCH} touching docs/md_v2)")
     parser.add_argument("--check", action="store_true", help="one request: exit 0 in sync, 3 work to do")
-    parser.add_argument("--verify", action="store_true", help="offline consistency: mirror, manifest, stamps")
+    parser.add_argument("--verify", action="store_true", help="offline consistency: page bytes, manifest, stamps")
     parser.add_argument("--full", action="store_true", help="refetch every carried page, ignoring the manifest")
     parser.add_argument("--reindex", action="store_true", help="offline: apply the policy, rebuild index and manifest")
     parser.add_argument("--json", action="store_true", help="machine-readable summary on stdout")

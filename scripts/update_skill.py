@@ -83,8 +83,20 @@ class Failure(Exception):
 
 
 def run(cmd: list[str], cwd: Path | None = None) -> tuple[int, str]:
-    proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, encoding="utf-8",
+                          errors="replace", check=False)  # the return code is the result here
     return proc.returncode, (proc.stdout + proc.stderr).strip()
+
+
+def write_text(path: Path, text: str) -> None:
+    """Write with LF endings, whatever platform this ran on.
+
+    `Path.write_text` translates "\\n" to os.linesep, so a Windows run would leave SKILL.md,
+    check_api.py and the report on disk with CRLF — the bytes `.gitattributes` declares LF and the
+    bytes every other stage of this pipeline reads back and compares.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8", newline="\n")
 
 
 def split_command(text: str) -> list[str]:
@@ -154,7 +166,7 @@ def top_level_keys(skipped: dict) -> set[str]:
     """The sections and root-level pages an upstream commit offers but the mirror does not carry."""
     keys = set()
     for repo_path in skipped:
-        rel = repo_path[len(DOCS_PREFIX):] if repo_path.startswith(DOCS_PREFIX) else repo_path
+        rel = repo_path.removeprefix(DOCS_PREFIX)
         keys.add(f"{rel.split('/')[0]}/" if "/" in rel else rel)
     return keys
 
@@ -368,7 +380,7 @@ def sync_coverage(skill_dir: Path, check_api_text: str, derived: dict, write: bo
         if merged != existing:
             text = write_region(text, name, merged)
     if changes and write:
-        (skill_dir / "scripts" / "check_api.py").write_text(text, encoding="utf-8")
+        write_text(skill_dir / "scripts" / "check_api.py", text)
     return text, changes
 
 
@@ -382,7 +394,7 @@ def read_front_matter(text: str) -> tuple[str, str]:
 def front_matter_values(text: str) -> dict[str, str]:
     """The `metadata:` values of SKILL.md as they stand — what a stamp has to compare against."""
     head, _ = read_front_matter(text)
-    return {name: value for name, value in re.findall(r"^  ([a-z-]+):[ \t]*(.*)$", head, re.M)}
+    return {name: value for name, value in re.findall(r"^  ([a-z-]+):[ \t]*(.*)$", head, re.MULTILINE)}
 
 
 def stamp_front_matter(text: str, values: dict[str, str]) -> tuple[str, list[str]]:
@@ -390,14 +402,14 @@ def stamp_front_matter(text: str, values: dict[str, str]) -> tuple[str, list[str
     head, body = read_front_matter(text)
     changes: list[str] = []
     for key, value in values.items():
-        pattern = re.compile(rf"^(  {key}:).*$", re.M)
+        pattern = re.compile(rf"^(  {key}:).*$", re.MULTILINE)
         found = pattern.search(head)
         if found:
             if found.group(0) != f"  {key}: {value}":
                 changes.append(f"metadata.{key}: {value}")
             head = pattern.sub(f"  {key}: {value}", head, count=1)
             continue
-        block = re.search(r"^metadata:\n((?:  \S.*\n)*)", head, re.M)
+        block = re.search(r"^metadata:\n((?:  \S.*\n)*)", head, re.MULTILINE)
         if not block:
             raise Failure("SKILL.md has no metadata: block to stamp")
         insert_at = block.end()
@@ -464,8 +476,13 @@ def gate_results(project: Path, skill_dir: Path) -> list[tuple[str, int, str]]:
 
 def probes() -> list[tuple[str, object, object]]:
     """Live re-observation of the values the references quote. Network and browsers required."""
-    from crawl4ai import (AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerRunConfig,
-                          JsonCssExtractionStrategy)
+    from crawl4ai import (
+        AsyncWebCrawler,
+        BrowserConfig,
+        CacheMode,
+        CrawlerRunConfig,
+        JsonCssExtractionStrategy,
+    )
 
     schema = {"name": "Front page items", "baseSelector": "tr.athing",
               "fields": [{"name": "title", "selector": "span.titleline > a", "type": "text"},
@@ -491,7 +508,7 @@ def probes() -> list[tuple[str, object, object]]:
 
 
 def current_version() -> str:
-    import importlib.metadata as metadata
+    from importlib import metadata
 
     try:
         return metadata.version("crawl4ai")
@@ -506,12 +523,13 @@ def build_report(state: dict) -> str:
         "# Skill sync report",
         "",
         f"- generated: {state['today']}",
-        f"- crawl4ai: {state['version']} (skill expects {state['expected']}: "
-        f"{'match' if state['version_ok'] else 'MISMATCH'})",
+        (f"- crawl4ai: {state['version']} (skill expects {state['expected']}: "
+         f"{'match' if state['version_ok'] else 'MISMATCH'})"),
         f"- docs mirror: {len(state['manifest'])} pages, snapshot `{state['snapshot'][:12]}`",
-        f"- docs commit: `{commit[:8] or 'unknown'}` ({state.get('upstream', {}).get('commit_date', 'unknown')})"
-        f" — {state.get('upstream', {}).get('repository', 'unknown')}"
-        f"/{state.get('upstream', {}).get('branch', 'unknown')}",
+        (f"- docs commit: `{commit[:8] or 'unknown'}` "
+         f"({state.get('upstream', {}).get('commit_date', 'unknown')}) "
+         f"— {state.get('upstream', {}).get('repository', 'unknown')}"
+         f"/{state.get('upstream', {}).get('branch', 'unknown')}"),
         f"- baseline: {state['baseline_source']}",
         f"- result: {'in sync' if state['ok'] else 'ACTION REQUIRED'}",
         "",
@@ -558,8 +576,8 @@ def build_report(state: dict) -> str:
     skipped = state.get("upstream", {}).get("skipped") or {}
     if state.get("new_upstream"):
         lines += ["## Upstream pages not carried", "",
-                  f"{len(skipped)} upstream page(s) sit outside the mirror's policy; the entries below "
-                  "appeared since the last committed sync.", ""]
+                  (f"{len(skipped)} upstream page(s) sit outside the mirror's policy; the entries below "
+                   "appeared since the last committed sync."), ""]
         for key in state["new_upstream"]:
             repo_path = f"{DOCS_PREFIX}{key}"
             reason = next((r for path, r in skipped.items() if path.startswith(repo_path)),
@@ -641,17 +659,49 @@ def agent_attempts(template: str, models: list[str]) -> list[tuple[str, list[str
     return [(model, split_command(template.replace("{model}", model))) for model in models]
 
 
-def snapshot_skill(skill_dir: Path) -> Path:
-    """A copy of the skill as it stands now, so a rejected attempt can be undone exactly."""
-    root = Path(tempfile.mkdtemp(prefix="skill-snapshot-"))
-    return Path(shutil.copytree(skill_dir, root / skill_dir.name,
-                                ignore=shutil.ignore_patterns("__pycache__", "*.pyc")))
+def owned_paths(project: Path, docs_dir: Path, skill_dir: Path) -> list[Path]:
+    """Every path an agent attempt may change: what the unattended workflow commits.
+
+    `.github/workflows/skill-update.yml` stages exactly these trees, and stage 1 of the prompt kit
+    tells an agent to edit `scripts/sync_docs_repo.py` (the curation policy) as well as the skill, so
+    the snapshot an attempt is rolled back to has to cover them all — a skill-only rollback would let
+    a rejected attempt's script or mirror edit leak into the next model's starting tree.
+    """
+    return [docs_dir, skill_dir, project / "scripts", project / "prompts", project / "reports",
+            project / ".style_check.py", project / "requirements.txt", project / "README.md"]
 
 
-def restore_skill(snapshot: Path, skill_dir: Path) -> None:
-    """Put the skill back exactly as snapshotted, dropping whatever the failed attempt wrote."""
-    shutil.rmtree(skill_dir, ignore_errors=True)
-    shutil.copytree(snapshot, skill_dir)
+def snapshot_owned(paths: list[Path]) -> tuple[Path, list[tuple[Path, Path]]]:
+    """A copy of every path as it stands now, so a rejected attempt can be undone exactly.
+
+    Returns the copy root and the (original, copy) pairs; paths that do not exist are skipped.
+    """
+    root = Path(tempfile.mkdtemp(prefix="skill-attempt-"))
+    pairs: list[tuple[Path, Path]] = []
+    for index, source in enumerate(paths):
+        if not source.exists():
+            continue
+        target = root / str(index)
+        if source.is_dir():
+            shutil.copytree(source, target, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        else:
+            shutil.copy2(source, target)
+        pairs.append((source, target))
+    return root, pairs
+
+
+def restore_owned(pairs: list[tuple[Path, Path]]) -> None:
+    """Put every snapshotted path back exactly as it was, dropping whatever the attempt left."""
+    for source, target in pairs:
+        if source.is_dir():
+            shutil.rmtree(source, ignore_errors=True)
+        elif source.exists():
+            source.unlink()
+        if target.is_dir():
+            shutil.copytree(target, source)
+        elif target.is_file():
+            source.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(target, source)
 
 
 def run_agent(args, state: dict, docs_dir: Path, skill_dir: Path, check_api_path: Path,
@@ -660,10 +710,10 @@ def run_agent(args, state: dict, docs_dir: Path, skill_dir: Path, check_api_path
     verdict of "in sync".
 
     An attempt counts only if the process exits 0, both gates stay green and the action list is
-    empty: a partial pass is reverted (the skill goes back to the snapshot taken here) and the next
-    model starts from that same clean tree, so no attempt inherits another's half-finished prose.
-    The record of every attempt lands in the report, because an unattended run has to say which
-    model did the work and which ones failed.
+    empty: a partial pass is reverted (every pipeline-owned path goes back to the snapshot taken
+    here) and the next model starts from that same clean tree, so no attempt inherits another's
+    half-finished prose — or its edit to the curation policy. The record of every attempt lands in
+    the report, because an unattended run has to say which model did the work and which ones failed.
     """
     try:
         models = load_models(Path(args.models_file).resolve() if args.models_file else None, args.model)
@@ -673,7 +723,7 @@ def run_agent(args, state: dict, docs_dir: Path, skill_dir: Path, check_api_path
         raise
     prompt = agent_prompt(report_path, docs_dir, skill_dir, check_api_path)
     before_actions, before_coverage = list(state["actions"]), list(state["coverage"])
-    snapshot = snapshot_skill(skill_dir)
+    snap_root, snapshot = snapshot_owned(owned_paths(PROJECT, docs_dir, skill_dir))
     record: dict = {"attempts": [], "accepted": "", "skipped": ""}
     print(f"[agent] {len(attempts)} model(s) to try, {len(before_actions)} action(s) to close",
           file=sys.stderr)
@@ -710,14 +760,14 @@ def run_agent(args, state: dict, docs_dir: Path, skill_dir: Path, check_api_path
             if accepted:
                 record["accepted"] = model
                 break
-            restore_skill(snapshot, skill_dir)
+            restore_owned(snapshot)
             state.update(survey(docs_dir, skill_dir, Path(args.baseline) if args.baseline else None))
             state["coverage"] = list(before_coverage)
             state["gates"] = gate_results(PROJECT, skill_dir)
             state["actions"] = actions_for(state)
             state["ok"] = not state["actions"]
     finally:
-        shutil.rmtree(snapshot.parent, ignore_errors=True)
+        shutil.rmtree(snap_root, ignore_errors=True)
     state["agent"] = record
     return state
 
@@ -803,7 +853,7 @@ def main() -> int:
             values["docs-synced"] = current["docs-synced"]
         stamped, stamps = stamp_front_matter(skill_text, values)
         if stamped != skill_text:
-            (skill_dir / "SKILL.md").write_text(stamped, encoding="utf-8")
+            write_text(skill_dir / "SKILL.md", stamped)
 
     observed: list[tuple[str, object, object]] = []
     probe_error = ""
@@ -828,7 +878,7 @@ def main() -> int:
 
     if write:
         report_path.parent.mkdir(parents=True, exist_ok=True)
-        report_path.write_text(build_report(state), encoding="utf-8")
+        write_text(report_path, build_report(state))
 
     if args.agent_cmd:
         if state["actions"] or args.force_agent:
@@ -838,7 +888,7 @@ def main() -> int:
                 print(f"error: {exc}", file=sys.stderr)
                 return 2
             if write:
-                report_path.write_text(build_report(state), encoding="utf-8")
+                write_text(report_path, build_report(state))
         else:
             # Nothing to close: an unattended run must not spend a model on a tree that is already
             # in sync. `--force-agent` is how a maintainer asks for a prose pass anyway.
@@ -846,7 +896,7 @@ def main() -> int:
             print("[agent] skipped: the report lists no action", file=sys.stderr)
             state["ok"] = not state["actions"]
             if write:
-                report_path.write_text(build_report(state), encoding="utf-8")
+                write_text(report_path, build_report(state))
 
     # The summary describes the state the verdict was taken on: after an agent pass that is the tree
     # the agent left, not the one it started from.
@@ -863,12 +913,12 @@ def main() -> int:
         print(f"docs: {len(state['manifest'])} pages at {state['upstream_commit'][:8] or 'unknown'}, "
               f"snapshot {state['snapshot'][:12]}, baseline {state['baseline_source']}")
         print(f"docs diff: {', '.join(f'{k}={len(v)}' for k, v in state['diff'].items())}")
-        for label, code, out in state["gates"]:
+        for label, code, _ in state["gates"]:
             print(f"gate {label}: exit {code}")
         for change in state["coverage"]:
             print(f"coverage {change}")
-        for claim, documented, observed in observed:
-            print(f"probe {claim}: documented {documented}, observed {observed}")
+        for claim, documented, seen in observed:
+            print(f"probe {claim}: documented {documented}, observed {seen}")
         for attempt in state.get("agent", {}).get("attempts", []):
             print(f"agent {attempt['model'] or 'cli'}: exit {attempt['exit']}, "
                   f"{attempt['actions_after']} action(s) left, {attempt['outcome']}")

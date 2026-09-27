@@ -67,6 +67,7 @@ committed state, so no change is ever marked as processed that was not.
 | `.github/dependabot.yml` | Version updates: a weekly pull request for `requirements.txt` and one for the workflow actions, each proving itself against `skill-check` before it can merge |
 | `.style_check.py` | Prose gate: pronouns, contractions, filler, emoji, a repeated version target. Exits non-zero on an issue |
 | `.gitattributes` | LF on both ends of git: the manifest hashes page bytes, so a checkout must not rewrite them |
+| `ruff.toml` | Lint standard for the scripts, the skill and the evals: the rule families a `ruff check` in the project root enforces. The mirror under `docs/` is upstream Markdown and is excluded; no workflow runs it |
 | `LICENSE` | Apache-2.0, the license of the upstream project this mirror is derived from |
 | `.evalcheck/` | Calibration runs for the eval suite and the recorded trigger transcripts; scratch, not shipped with the skill |
 
@@ -79,8 +80,8 @@ level below `skills/`. Everything else in this project is free to move.
 pip install -r requirements.txt && crawl4ai-setup     # once; the probes crawl example.com for real
 
 python scripts/sync_docs_repo.py --check              # one request: exit 0 in sync, 3 work to do
-python scripts/sync_docs_repo.py                      # incremental: only pages whose blob moved
-python scripts/sync_docs_repo.py --verify             # offline: mirror, manifest and skill stamps
+python scripts/sync_docs_repo.py                      # incremental: only pages whose blob or bytes moved
+python scripts/sync_docs_repo.py --verify             # offline: page bytes vs manifest, and the skill's stamps
 python scripts/sync_docs_repo.py --full               # refetch every carried page
 python scripts/sync_docs_repo.py --reindex            # offline: re-apply the curation policy
 python scripts/update_skill.py                        # stamp, merge coverage, write the report
