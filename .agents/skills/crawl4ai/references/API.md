@@ -116,8 +116,8 @@ Import path `crawl4ai.chunking_strategy` for all; only `RegexChunking` is re-exp
 | `SlidingWindowChunking` | `(window_size=100, step=50, **kwargs)` | none |
 | `FixedLengthWordChunking` | `(chunk_size=100, **kwargs)` | none |
 | `OverlappingWindowChunking` | `(window_size=1000, overlap=100, **kwargs)` | none |
-| `NlpSentenceChunking` | `(**kwargs)` | NLTK `punkt`; construction raises `LookupError` without it `[verified: run]` |
-| `TopicSegmentationChunking` | `(num_keywords=3, **kwargs)` | NLTK `stopwords` (TextTiling); construction raises `LookupError` without it `[verified: run]` |
+| `NlpSentenceChunking` | `(**kwargs)` | NLTK `punkt`; `__init__` calls `model_loader.load_nltk_punkt()`, which finds the resource and otherwise downloads it — construction succeeded on a host without it, and raises `LookupError` only when the download cannot run `[verified: run]` `[verified: source]` |
+| `TopicSegmentationChunking` | `(num_keywords=3, **kwargs)` | NLTK `stopwords` (TextTiling); no download helper, so construction raises `LookupError: Resource 'stopwords' not found` when the resource is missing `[verified: run]` |
 | `IdentityChunking` | `(**kwargs)` | none |
 
 Method: `.chunk(text) -> List[str]`. `[verified: run]` `OverlappingWindowChunking(window_size=6, overlap=2).chunk(<4-sentence text>)` returned 5 chunks.

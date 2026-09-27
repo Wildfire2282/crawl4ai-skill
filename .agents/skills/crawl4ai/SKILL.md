@@ -102,7 +102,7 @@ asyncio.run(main())
 | Input | Configuration | Observed output | Status |
 | --- | --- | --- | --- |
 | `https://example.com` | defaults, `CacheMode.BYPASS` | `success=True`, `status_code=200`, Markdown 166 chars, first line `# Example Domain` | `[verified: run]` |
-| `https://news.ycombinator.com` | `JsonCssExtractionStrategy`, `baseSelector="tr.athing"`, fields `title` (text) and `url` (attribute `href`) | 30 records; record 0 `{"title": "Replacing the old battery on rechargeable bike lights", "url": "https://jvns.ca/blog/..."}` | `[verified: run]` |
+| `https://news.ycombinator.com` | `JsonCssExtractionStrategy`, `baseSelector="tr.athing"`, fields `title` (text) and `url` (attribute `href`) | 30 records on 2026-09-27; record 0 `{"title": "\"They had no concept of a duty of care to their users.\"", "url": "https://unsung.aresluna.org/they-had-no-concept-of-a-duty-of-care-to-their-users/"}` — the headline on record 0 changes between runs, so only the record shape is stable | `[verified: run]` |
 | `["https://example.com", "https://example.org"]` | `arun_many` + `MemoryAdaptiveDispatcher(max_session_permit=3)` | both `success=True`, both `status_code=200`, Markdown 166 chars each | `[verified: run]` |
 
 ## Invariants and failure modes

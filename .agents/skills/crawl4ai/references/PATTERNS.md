@@ -151,7 +151,7 @@ result = await crawler.arun("https://news.ycombinator.com", config=config)
 rows = json.loads(result.extracted_content)
 ```
 
-Result: `[verified: run]` 30 records; record 0 `{"title": "Replacing the old battery on rechargeable bike lights", "url": "https://jvns.ca/blog/..."}`.
+Result: `[verified: run]` 30 records on 2026-09-27; record 0 `{"title": "\"They had no concept of a duty of care to their users.\"", "url": "https://unsung.aresluna.org/they-had-no-concept-of-a-duty-of-care-to-their-users/"}`. The headline on record 0 differs between runs, so the stable part of this observation is the record shape (title text plus the `href` attribute), not the headline.
 
 Variants: `JsonXPathExtractionStrategy` for XPath selectors; `RegexExtractionStrategy` for emails, prices, URLs over `fit_html`. Field selectors resolve relative to `baseSelector`.
 
@@ -192,7 +192,7 @@ Result: `[verified: run]` `.chunk()` returns `List[str]`: `OverlappingWindowChun
 
 Filter choice: `PruningContentFilterLXML` is the maintained pruning filter in 0.9.4; `PruningContentFilter` still produces identical output but emits `DeprecationWarning` `[verified: run]`.
 
-Selection: `RegexChunking` for structural separators; `SlidingWindowChunking`, `FixedLengthWordChunking`, `OverlappingWindowChunking` for size-bounded windows without extra dependencies; `NlpSentenceChunking` requires NLTK `punkt`; `TopicSegmentationChunking` requires NLTK `stopwords` — both raise `LookupError` at construction without them `[verified: run]`.
+Selection: `RegexChunking` for structural separators; `SlidingWindowChunking`, `FixedLengthWordChunking`, `OverlappingWindowChunking` for size-bounded windows without extra dependencies; `NlpSentenceChunking` needs NLTK `punkt` and fetches it on demand through `model_loader.load_nltk_punkt()`; `TopicSegmentationChunking` needs NLTK `stopwords` and has no such helper — construction raised `LookupError: Resource 'stopwords' not found` on a host without it `[verified: run]` `[verified: source]`.
 
 ## 11. Tables
 
@@ -259,7 +259,7 @@ second = await crawler.arun(url, config=config)   # cache_status="hit_validated"
 print(second.cache_status, second.cached_at, second.head_fingerprint)
 ```
 
-Result: `[verified: run]` `https://example.org` on a cold cache: first run `cache_status="miss"`, `cached_at=None`; second run logs `Cache validated: Server returned 304 Not Modified`, reports `cache_status="hit_validated"` with `cached_at` set and a 166-char Markdown. A URL whose copy is already warm (`https://example.com` at the time of writing) reports `cache_status="hit_validated"` on the first call too. Dropping `check_cache_freshness` turns the second run into `cache_status="hit"` — no origin contact, no `[FETCH]` line, ~0.03s `[verified: run]`.
+Result: `[verified: run]` `https://example.org` on a cold cache: first run `cache_status="miss"`, `cached_at=None`; second run logs `Cache validated: Server returned 304 Not Modified`, reports `cache_status="hit_validated"` with `cached_at` set and a 166-char Markdown. A URL whose copy is already warm (`https://example.com`, once a validating run has written it) reports `cache_status="hit_validated"` on the first call too. Dropping `check_cache_freshness` turns that run into `cache_status="hit"` in 0.005s (2026-09-27): the `[FETCH]` line is still printed, against the local copy at 0.00s, and no `[CACHE]` validation line follows it.
 
 Mechanism: the cached copy is revalidated with conditional requests (`ETag`/`Last-Modified`) and, when the server answers 200 instead of 304, by comparing a fingerprint of the new `<head>` against the stored one `[verified: source]`. `result.head_fingerprint` carries that value.
 
