@@ -1,21 +1,25 @@
 ---
 source: https://docs.crawl4ai.com/advanced/session-management/
 title: "Session Management"
-fetched: 2026-09-27
+fetched: 2026-09-28
 ---
 
 # Session Management
-Session management in Crawl4AI is a powerful feature that allows you to maintain state across multiple requests, making it particularly suitable for handling complex multi-step crawling tasks. It enables you to reuse the same browser tab (or page object) across sequential actions and crawls, which is beneficial for:
-  * **Performing JavaScript actions before and after crawling.**
-  * **Executing multiple sequential crawls faster** without needing to reopen tabs or allocate memory repeatedly.
 
+Session management in Crawl4AI is a powerful feature that allows you to maintain state across multiple requests, making it particularly suitable for handling complex multi-step crawling tasks. It enables you to reuse the same browser tab (or page object) across sequential actions and crawls, which is beneficial for:
+
+- **Performing JavaScript actions before and after crawling.**
+- **Executing multiple sequential crawls faster** without needing to reopen tabs or allocate memory repeatedly.
 
 **Note:** This feature is designed for sequential workflows and is not suitable for parallel operations.
-* * *
+
+---
+
 #### Basic Session Usage
+
 Use `BrowserConfig` and `CrawlerRunConfig` to maintain state with a `session_id`:
 
-```
+```python
 from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
 
 async with AsyncWebCrawler() as crawler:
@@ -37,14 +41,15 @@ async with AsyncWebCrawler() as crawler:
 
     # Clean up when done
     await crawler.crawler_strategy.kill_session(session_id)
-Copy
 ```
 
-* * *
+---
+
 #### Dynamic Content with Sessions
+
 Here's an example of crawling GitHub commits across multiple pages while preserving session state:
 
-```
+```python
 from crawl4ai.async_configs import CrawlerRunConfig
 from crawl4ai import JsonCssExtractionStrategy
 from crawl4ai.cache_context import CacheMode
@@ -69,7 +74,7 @@ async def crawl_dynamic_content():
         const firstCommit = commits[0].textContent.trim();
         return firstCommit !== window.lastCommit;
     }"""
-
+    
     schema = {
         "name": "Commit Extractor",
         "baseSelector": "li[data-testid='commit-row-item']",
@@ -83,13 +88,13 @@ async def crawl_dynamic_content():
         ],
     }
     extraction_strategy = JsonCssExtractionStrategy(schema, verbose=True)
-
-
+    
+    
     browser_config = BrowserConfig(
         verbose=True,
         headless=False,
     )
-
+        
     async with AsyncWebCrawler(config=browser_config) as crawler:
         for page in range(3):
             crawler_config = CrawlerRunConfig(
@@ -102,12 +107,12 @@ async def crawl_dynamic_content():
                 cache_mode=CacheMode.BYPASS,
                 capture_console_messages=True,
             )
-
+            
             result = await crawler.arun(url=url, config=crawler_config)
-
+            
             if result.console_messages:
                 print(f"Page {page + 1} console messages:", result.console_messages)
-
+            
             if result.extracted_content:
                 # print(f"Page {page + 1} result:", result.extracted_content)
                 commits = json.loads(result.extracted_content)
@@ -119,14 +124,15 @@ async def crawl_dynamic_content():
         print(f"Successfully crawled {len(all_commits)} commits across 3 pages")
         # Clean up session
         await crawler.crawler_strategy.kill_session(session_id)
-Copy
 ```
 
-* * *
+---
+
 ## Example 1: Basic Session-Based Crawling
+
 A simple example using session-based crawling:
 
-```
+```python
 import asyncio
 from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
 from crawl4ai.cache_context import CacheMode
@@ -144,23 +150,29 @@ async def basic_session_crawl():
                 css_selector=".content-item",
                 cache_mode=CacheMode.BYPASS
             )
-
+            
             result = await crawler.arun(config=config)
             print(f"Page {page + 1}: Found {result.extracted_content.count('.content-item')} items")
 
         await crawler.crawler_strategy.kill_session(session_id)
 
 asyncio.run(basic_session_crawl())
-Copy
 ```
 
-This example shows: 1. Reusing the same `session_id` across multiple requests. 2. Executing JavaScript to load more content dynamically. 3. Properly closing the session to free resources.
-* * *
+This example shows:
+1. Reusing the same `session_id` across multiple requests.
+2. Executing JavaScript to load more content dynamically.
+3. Properly closing the session to free resources.
+
+---
+
 ## Advanced Technique 1: Custom Execution Hooks
+
 > Warning: You might feel confused by the end of the next few examples 😅, so make sure you are comfortable with the order of the parts before you start this.
+
 Use custom hooks to handle complex scenarios, such as waiting for content to load dynamically:
 
-```
+```python
 async def advanced_session_crawl_with_hooks():
     first_commit = ""
 
@@ -201,15 +213,17 @@ async def advanced_session_crawl_with_hooks():
         await crawler.crawler_strategy.kill_session(session_id)
 
 asyncio.run(advanced_session_crawl_with_hooks())
-Copy
 ```
 
 This technique ensures new content loads before the next action.
-* * *
+
+---
+
 ## Advanced Technique 2: Integrated JavaScript Execution and Waiting
+
 Combine JavaScript execution and waiting logic for concise handling of dynamic content:
 
-```
+```python
 async def integrated_js_and_wait_crawl():
     async with AsyncWebCrawler() as crawler:
         session_id = "integrated_session"
@@ -242,13 +256,18 @@ async def integrated_js_and_wait_crawl():
         await crawler.crawler_strategy.kill_session(session_id)
 
 asyncio.run(integrated_js_and_wait_crawl())
-Copy
 ```
 
-* * *
+---
+
 #### Common Use Cases for Sessions
-1. **Authentication Flows** : Login and interact with secured pages.
-2. **Pagination Handling** : Navigate through multiple pages.
-3. **Form Submissions** : Fill forms, submit, and process results.
-4. **Multi-step Processes** : Complete workflows that span multiple actions.
-5. **Dynamic Content Navigation** : Handle JavaScript-rendered or event-triggered content.
+
+1. **Authentication Flows**: Login and interact with secured pages.
+
+2. **Pagination Handling**: Navigate through multiple pages.
+
+3. **Form Submissions**: Fill forms, submit, and process results.
+
+4. **Multi-step Processes**: Complete workflows that span multiple actions.
+
+5. **Dynamic Content Navigation**: Handle JavaScript-rendered or event-triggered content.

@@ -1,26 +1,32 @@
 ---
 source: https://docs.crawl4ai.com/advanced/advanced-features/
 title: "Overview of Some Important Advanced Features"
-fetched: 2026-09-27
+fetched: 2026-09-28
 ---
 
-# Overview of Some Important Advanced Features
+# Overview of Some Important Advanced Features 
 (Proxy, PDF, Screenshot, SSL, Headers, & Storage State)
+
 Crawl4AI offers multiple power-user features that go beyond simple crawling. This tutorial covers:
-1. **Proxy Usage**
-2. **Capturing PDFs & Screenshots**
-3. **Handling SSL Certificates**
-4. **Custom Headers**
-5. **Session Persistence & Local Storage**
-6. **Robots.txt Compliance**
-> **Prerequisites**
->  - You have a basic grasp of [AsyncWebCrawler Basics](https://docs.crawl4ai.com/core/simple-crawling/)
->  - You know how to run or configure your Python environment with Playwright installed
-* * *
+
+1. **Proxy Usage**  
+2. **Capturing PDFs & Screenshots**  
+3. **Handling SSL Certificates**  
+4. **Custom Headers**  
+5. **Session Persistence & Local Storage**  
+6. **Robots.txt Compliance**  
+
+> **Prerequisites**  
+> - You have a basic grasp of [AsyncWebCrawler Basics](https://docs.crawl4ai.com/core/simple-crawling/)  
+> - You know how to run or configure your Python environment with Playwright installed
+
+---
+
 ## 1. Proxy Usage
+
 If you need to route your crawl traffic through a proxy—whether for IP rotation, geo-testing, or privacy—Crawl4AI supports it via `BrowserConfig.proxy_config`.
 
-```
+```python
 import asyncio
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 
@@ -50,18 +56,20 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-Copy
 ```
 
-**Key Points**
-- **`proxy_config`**expects a dict with`server` and optional auth credentials.
-- Many commercial proxies provide an HTTP/HTTPS “gateway” server that you specify in `server`.
+**Key Points**  
+- **`proxy_config`** expects a dict with `server` and optional auth credentials.  
+- Many commercial proxies provide an HTTP/HTTPS “gateway” server that you specify in `server`.  
 - If your proxy doesn’t need auth, omit `username`/`password`.
-* * *
+
+---
+
 ## 2. Capturing PDFs & Screenshots
+
 Sometimes you need a visual record of a page or a PDF “printout.” Crawl4AI can do both in one pass:
 
-```
+```python
 import os, asyncio
 from base64 import b64decode
 from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
@@ -101,29 +109,32 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-Copy
 ```
 
-**Why PDF + Screenshot?**
-- Large or complex pages can be slow or error-prone with “traditional” full-page screenshots.
-- Exporting a PDF is more reliable for very long pages. Crawl4AI automatically converts the first PDF page into an image if you request both.
-**Relevant Parameters**
-- **`pdf=True`**: Exports the current page as a PDF (base64-encoded in`result.pdf`).
-- **`screenshot=True`**: Creates a screenshot (base64-encoded in`result.screenshot`).
-- **`scroll_delay`**: Controls the delay (seconds) between scroll steps when taking a full-page screenshot of a tall page. Defaults to`0.2`. Increase for pages with slow-loading assets.
-- **`scan_full_page`**or advanced hooking can further refine how the crawler captures content.
-* * *
+**Why PDF + Screenshot?**  
+- Large or complex pages can be slow or error-prone with “traditional” full-page screenshots.  
+- Exporting a PDF is more reliable for very long pages. Crawl4AI automatically converts the first PDF page into an image if you request both.  
+
+**Relevant Parameters**  
+- **`pdf=True`**: Exports the current page as a PDF (base64-encoded in `result.pdf`).  
+- **`screenshot=True`**: Creates a screenshot (base64-encoded in `result.screenshot`).  
+- **`scroll_delay`**: Controls the delay (seconds) between scroll steps when taking a full-page screenshot of a tall page. Defaults to `0.2`. Increase for pages with slow-loading assets.  
+- **`scan_full_page`** or advanced hooking can further refine how the crawler captures content.
+
+---
+
 ## 3. Handling SSL Certificates
+
 If you need to verify or export a site’s SSL certificate—for compliance, debugging, or data analysis—Crawl4AI can fetch it during the crawl:
 
-```
+```python
 import asyncio, os
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, CacheMode
 
 async def main():
     tmp_dir = os.path.join(os.getcwd(), "tmp")
     os.makedirs(tmp_dir, exist_ok=True)
-
+    
     config = CrawlerRunConfig(
         fetch_ssl_certificate=True,
         cache_mode=CacheMode.BYPASS
@@ -131,7 +142,7 @@ async def main():
 
     async with AsyncWebCrawler() as crawler:
         result = await crawler.arun(url="https://example.com", config=config)
-
+        
         if result.success and result.ssl_certificate:
             cert = result.ssl_certificate
             print("\nCertificate Information:")
@@ -143,24 +154,26 @@ async def main():
             cert.to_json(os.path.join(tmp_dir, "certificate.json"))
             cert.to_pem(os.path.join(tmp_dir, "certificate.pem"))
             cert.to_der(os.path.join(tmp_dir, "certificate.der"))
-
+            
             print("\nCertificate exported to JSON/PEM/DER in 'tmp' folder.")
         else:
             print("[ERROR] No certificate or crawl failed.")
 
 if __name__ == "__main__":
     asyncio.run(main())
-Copy
 ```
 
-**Key Points**
-- **`fetch_ssl_certificate=True`**triggers certificate retrieval.
+**Key Points**  
+- **`fetch_ssl_certificate=True`** triggers certificate retrieval.  
 - `result.ssl_certificate` includes methods (`to_json`, `to_pem`, `to_der`) for saving in various formats (handy for server config, Java keystores, etc.).
-* * *
+
+---
+
 ## 4. Custom Headers
+
 Sometimes you need to set custom headers (e.g., language preferences, authentication tokens, or specialized user-agent strings). You can do this in multiple ways:
 
-```
+```python
 import asyncio
 from crawl4ai import AsyncWebCrawler
 
@@ -187,18 +200,21 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-Copy
 ```
 
-**Notes**
-- Some sites may react differently to certain headers (e.g., `Accept-Language`).
+**Notes**  
+- Some sites may react differently to certain headers (e.g., `Accept-Language`).  
 - If you need advanced user-agent randomization or client hints, see [Identity-Based Crawling (Anti-Bot)](https://docs.crawl4ai.com/advanced/identity-based-crawling/) or use `UserAgentGenerator`.
-* * *
+
+---
+
 ## 5. Session Persistence & Local Storage
+
 Crawl4AI can preserve cookies and localStorage so you can continue where you left off—ideal for logging into sites or skipping repeated auth flows.
+
 ### 5.1 `storage_state`
 
-```
+```python
 import asyncio
 from crawl4ai import AsyncWebCrawler
 
@@ -239,21 +255,24 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-Copy
 ```
 
 ### 5.2 Exporting & Reusing State
+
 You can sign in once, export the browser context, and reuse it later—without re-entering credentials.
-  * **`await context.storage_state(path="my_storage.json")`**: Exports cookies, localStorage, etc. to a file.
-  * Provide `storage_state="my_storage.json"` on subsequent runs to skip the login step.
 
+- **`await context.storage_state(path="my_storage.json")`**: Exports cookies, localStorage, etc. to a file.  
+- Provide `storage_state="my_storage.json"` on subsequent runs to skip the login step.
 
-**See** : [Detailed session management tutorial](https://docs.crawl4ai.com/advanced/session-management/) or [Explanations → Browser Context & Managed Browser](https://docs.crawl4ai.com/advanced/identity-based-crawling/) for more advanced scenarios (like multi-step logins, or capturing after interactive pages).
-* * *
+**See**: [Detailed session management tutorial](https://docs.crawl4ai.com/advanced/session-management/) or [Explanations → Browser Context & Managed Browser](https://docs.crawl4ai.com/advanced/identity-based-crawling/) for more advanced scenarios (like multi-step logins, or capturing after interactive pages).
+
+---
+
 ## 6. Robots.txt Compliance
+
 Crawl4AI supports respecting robots.txt rules with efficient caching:
 
-```
+```python
 import asyncio
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 
@@ -268,21 +287,28 @@ async def main():
             "https://example.com",
             config=config
         )
-
+        
         if not result.success and result.status_code == 403:
             print("Access denied by robots.txt")
 
 if __name__ == "__main__":
     asyncio.run(main())
-Copy
 ```
 
-**Key Points** - Robots.txt files are cached locally for efficiency - Cache is stored in `~/.crawl4ai/robots/robots_cache.db` - Cache has a default TTL of 7 days - If robots.txt can't be fetched, crawling is allowed - Returns 403 status code if URL is disallowed
-* * *
+**Key Points**
+- Robots.txt files are cached locally for efficiency
+- Cache is stored in `~/.crawl4ai/robots/robots_cache.db`
+- Cache has a default TTL of 7 days
+- If robots.txt can't be fetched, crawling is allowed
+- Returns 403 status code if URL is disallowed
+
+---
+
 ## Putting It All Together
+
 Here’s a snippet that combines multiple “advanced” features (proxy, PDF, screenshot, SSL, custom headers, and session reuse) into one run. Normally, you’d tailor each setting to your project’s needs.
 
-```
+```python
 import os, asyncio
 from base64 import b64decode
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
@@ -312,13 +338,13 @@ async def main():
     # 3. Crawl
     async with AsyncWebCrawler(config=browser_cfg) as crawler:
         result = await crawler.arun(
-            url = "https://secure.example.com/protected",
+            url = "https://secure.example.com/protected", 
             config=crawler_cfg
         )
-
+        
         if result.success:
             print("[OK] Crawled the secure page. Links found:", len(result.links.get("internal", [])))
-
+            
             # Save PDF & screenshot
             if result.pdf:
                 with open("result.pdf", "wb") as f:
@@ -326,7 +352,7 @@ async def main():
             if result.screenshot:
                 with open("result.png", "wb") as f:
                     f.write(b64decode(result.screenshot))
-
+            
             # Check SSL cert
             if result.ssl_certificate:
                 print("SSL Issuer CN:", result.ssl_certificate.issuer.get("CN", ""))
@@ -335,29 +361,34 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-Copy
 ```
 
-* * *
-* * *
+---
+
+---
+
 ## 7. Anti-Bot Features (Stealth Mode & Undetected Browser)
+
 Crawl4AI provides two powerful features to bypass bot detection:
+
 ### 7.1 Stealth Mode
+
 Stealth mode uses playwright-stealth to modify browser fingerprints and behaviors. Enable it with a simple flag:
 
-```
+```python
 browser_config = BrowserConfig(
     enable_stealth=True,  # Activates stealth mode
     headless=False
 )
-Copy
 ```
 
-**When to use** : Sites with basic bot detection (checking navigator.webdriver, plugins, etc.)
+**When to use**: Sites with basic bot detection (checking navigator.webdriver, plugins, etc.)
+
 ### 7.2 Undetected Browser
+
 For advanced bot detection, use the undetected browser adapter:
 
-```
+```python
 from crawl4ai import UndetectedAdapter
 from crawl4ai.async_crawler_strategy import AsyncPlaywrightCrawlerStrategy
 
@@ -370,44 +401,52 @@ strategy = AsyncPlaywrightCrawlerStrategy(
 
 async with AsyncWebCrawler(crawler_strategy=strategy, config=browser_config) as crawler:
     # Your crawling code
-Copy
 ```
 
-**When to use** : Sites with sophisticated bot detection (Cloudflare, DataDome, etc.)
+**When to use**: Sites with sophisticated bot detection (Cloudflare, DataDome, etc.)
+
 ### 7.3 Combining Both
+
 For maximum evasion, combine stealth mode with undetected browser:
 
-```
+```python
 browser_config = BrowserConfig(
     enable_stealth=True,  # Enable stealth
     headless=False
 )
 
 adapter = UndetectedAdapter()  # Use undetected browser
-Copy
 ```
 
 ### Choosing the Right Approach
-| Detection Level  | Recommended Approach  |
-| --- | --- |
-| No protection  | Regular browser  |
-| Basic checks  | Regular + Stealth mode  |
-| Advanced protection  | Undetected browser  |
-| Maximum evasion  | Undetected + Stealth mode  |
-**Best Practice** : Start with regular browser + stealth mode. Only use undetected browser if needed, as it may be slightly slower.
-See [Undetected Browser Mode](https://docs.crawl4ai.com/advanced/undetected-browser/) for detailed examples.
-* * *
-## Conclusion & Next Steps
-You've now explored several **advanced** features:
-  * **Proxy Usage**
-  * **PDF & Screenshot** capturing for large or critical pages
-  * **SSL Certificate** retrieval & exporting
-  * **Custom Headers** for language or specialized requests
-  * **Session Persistence** via storage state
-  * **Robots.txt Compliance**
-  * **Anti-Bot Features** (Stealth Mode & Undetected Browser)
 
+| Detection Level | Recommended Approach |
+|----------------|---------------------|
+| No protection | Regular browser |
+| Basic checks | Regular + Stealth mode |
+| Advanced protection | Undetected browser |
+| Maximum evasion | Undetected + Stealth mode |
+
+**Best Practice**: Start with regular browser + stealth mode. Only use undetected browser if needed, as it may be slightly slower.
+
+See [Undetected Browser Mode](https://docs.crawl4ai.com/advanced/undetected-browser/) for detailed examples.
+
+---
+
+## Conclusion & Next Steps
+
+You've now explored several **advanced** features:
+
+- **Proxy Usage**  
+- **PDF & Screenshot** capturing for large or critical pages  
+- **SSL Certificate** retrieval & exporting  
+- **Custom Headers** for language or specialized requests  
+- **Session Persistence** via storage state
+- **Robots.txt Compliance**
+- **Anti-Bot Features** (Stealth Mode & Undetected Browser)
 
 With these power tools, you can build robust scraping workflows that mimic real user behavior, handle secure sites, capture detailed snapshots, manage sessions across multiple runs, and bypass bot detection—streamlining your entire data collection pipeline.
-**Note** : In future versions, we may enable stealth mode and undetected browser by default. For now, users should explicitly enable these features when needed.
-**Last Updated** : 2025-01-17
+
+**Note**: In future versions, we may enable stealth mode and undetected browser by default. For now, users should explicitly enable these features when needed.
+
+**Last Updated**: 2025-01-17

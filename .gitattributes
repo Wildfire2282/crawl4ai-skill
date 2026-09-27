@@ -1,4 +1,4 @@
 # `docs/crawl4ai/_manifest.json` records sha256 over the exact bytes of every mirrored page, and
-# `scripts/mirror_docs_site.py` writes "\n" only. LF on both ends of git keeps a Windows clone and a
+# `scripts/sync_docs_repo.py` writes "\n" only. LF on both ends of git keeps a Windows clone and a
 # Linux runner looking at identical bytes, which is what the drift gate compares.
 * text=auto eol=lf

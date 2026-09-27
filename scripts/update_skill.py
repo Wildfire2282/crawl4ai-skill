@@ -2,13 +2,17 @@
 """Keep the crawl4ai skill in step with the upstream docs mirror and the installed package.
 
 Stages, in order:
-  1. Snapshot — hash the docs mirror and diff it against a baseline (`git show HEAD:...` or --baseline).
+  0. Docs     — out of scope by design: `scripts/sync_docs_repo.py` mirrors `docs/md_v2` from
+                `unclecode/crawl4ai` and records the commit it mirrored in `docs/crawl4ai/_upstream.json`.
+                This script never touches the network; it reads what that record says.
+  1. Snapshot — hash the docs mirror and diff it against a baseline (`git show HEAD:...` or --baseline),
+                including the pages upstream carries that the mirror's policy leaves out.
   2. Coverage — union the API names the skill's prose cites into the generated regions of
                 `.agents/skills/crawl4ai/scripts/check_api.py`, so the gate keeps checking them.
   3. Gates    — run `check_api.py` (names, parameters, result fields, documented defaults) and
                 `.style_check.py`. A red gate stops the run and nothing is stamped.
-  4. Stamp    — with the gates green, write `api-tracked`, `docs-snapshot`, `docs-pages` and
-                `docs-synced` into the SKILL.md front matter, plus the `Targets crawl4ai X.Y.x`
+  4. Stamp    — with the gates green, write `api-tracked`, `docs-commit`, `docs-snapshot`, `docs-pages`
+                and `docs-synced` into the SKILL.md front matter, plus the `Targets crawl4ai X.Y.x`
                 line in `compatibility:`.
   5. Probes   — with --probe, re-observe the values the references quote (live crawl, network).
   6. Report   — `reports/skill-sync.md`: upstream changes mapped onto the skill files that cite
@@ -16,7 +20,10 @@ Stages, in order:
   7. Agent    — with --agent-cmd, hand the report and the prompt kit in `prompts/skill-sync/` to an
                 agent CLI, then re-merge the coverage its new prose cites, re-run the gates and
                 re-derive the verdict, so the exit code describes the tree the agent left behind
-                rather than the one it started from.
+                rather than the one it started from. The pass is skipped when the report lists no
+                actions, and a `{model}` placeholder in the command makes it retry down a model list
+                (`--models-file`), restoring the skill between attempts, so an unavailable free model
+                cannot end an unattended run.
 
 The prose in SKILL.md and references/ stays hand-written: its `[verified: run]` markers are claims
 about executed crawls, which no unattended job can assert. This tool regenerates everything that is
@@ -36,8 +43,10 @@ import inspect
 import json
 import re
 import shlex
+import shutil
 import subprocess
 import sys
+import tempfile
 from datetime import date
 from pathlib import Path
 from urllib.parse import urlparse
@@ -48,6 +57,8 @@ SKILL = PROJECT / ".agents" / "skills" / "crawl4ai"
 REPORT = PROJECT / "reports" / "skill-sync.md"
 PROMPT_KIT = PROJECT / "prompts" / "skill-sync"  # stages handed to the agent CLI, entry point 00-overview.md
 MANIFEST = "_manifest.json"
+UPSTREAM = "_upstream.json"  # written by scripts/sync_docs_repo.py: the commit the mirror came from
+DOCS_PREFIX = "docs/md_v2/"
 CANDIDATE_MODULES = (
     "crawl4ai",
     "crawl4ai.deep_crawling",
@@ -101,7 +112,7 @@ def agent_prompt(report: Path, docs_dir: Path, skill_dir: Path, check_api: Path)
 
 def load_manifest(path: Path) -> dict[str, dict]:
     if not path.is_file():
-        raise Failure(f"no docs manifest at {path} — run scripts/mirror_docs_site.py first")
+        raise Failure(f"no docs manifest at {path} — run scripts/sync_docs_repo.py first")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
@@ -109,6 +120,55 @@ def load_manifest(path: Path) -> dict[str, dict]:
     if not isinstance(data, dict) or not data:
         raise Failure(f"{path} lists no pages")
     return data
+
+
+def load_json_document(path: Path) -> dict | None:
+    """A JSON object from disk, or None when it is absent or unusable (never fatal here)."""
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def committed_json(relative: str) -> dict | None:
+    """The same document as committed at HEAD — the baseline for what changed upstream."""
+    code, out = run(["git", "show", f"HEAD:{relative}"], cwd=PROJECT)
+    if code != 0:
+        return None
+    try:
+        data = json.loads(out)
+    except json.JSONDecodeError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def upstream_state(docs_dir: Path) -> dict:
+    """What `scripts/sync_docs_repo.py` recorded: the mirrored commit and the pages it left out."""
+    return load_json_document(docs_dir / UPSTREAM) or {}
+
+
+def top_level_keys(skipped: dict) -> set[str]:
+    """The sections and root-level pages an upstream commit offers but the mirror does not carry."""
+    keys = set()
+    for repo_path in skipped:
+        rel = repo_path[len(DOCS_PREFIX):] if repo_path.startswith(DOCS_PREFIX) else repo_path
+        keys.add(f"{rel.split('/')[0]}/" if "/" in rel else rel)
+    return keys
+
+
+def new_upstream_keys(upstream: dict, baseline: dict | None) -> list[str]:
+    """Sections or root pages upstream started offering since the last committed sync.
+
+    Only whole sections and root-level pages: a new page inside a section the policy already leaves
+    out (a blog post) is the policy's business, not an action.
+    """
+    if baseline is None:
+        return []
+    return sorted(top_level_keys(upstream.get("skipped") or {})
+                  - top_level_keys(baseline.get("skipped") or {}))
 
 
 def docs_snapshot(manifest: dict[str, dict]) -> str:
@@ -369,8 +429,17 @@ def survey(docs_dir: Path, skill_dir: Path, baseline: Path | None) -> dict:
             match = topic_match(page.read_text(encoding="utf-8", errors="replace"), skill_dir)
             if match:
                 leads[name] = match
+    try:
+        docs_rel = docs_dir.relative_to(PROJECT).as_posix()
+    except ValueError:
+        docs_rel = docs_dir.name
+    upstream = upstream_state(docs_dir)
+    upstream_baseline = committed_json(f"{docs_rel}/{UPSTREAM}")
     return {"manifest": manifest, "previous": previous or {}, "baseline_source": baseline_source,
-            "diff": diff, "cited": cited, "leads": leads, "snapshot": docs_snapshot(manifest)}
+            "diff": diff, "cited": cited, "leads": leads, "snapshot": docs_snapshot(manifest),
+            "upstream": upstream, "upstream_baseline": upstream_baseline,
+            "upstream_commit": str(upstream.get("commit", "")),
+            "new_upstream": new_upstream_keys(upstream, upstream_baseline)}
 
 
 def gate_results(project: Path, skill_dir: Path) -> list[tuple[str, int, str]]:
@@ -378,7 +447,7 @@ def gate_results(project: Path, skill_dir: Path) -> list[tuple[str, int, str]]:
     results = []
     for label, cmd in (
         ("check_api.py", [sys.executable, "-B", str(skill_dir / "scripts" / "check_api.py")]),
-        (".style_check.py", [sys.executable, "-B", str(project / ".style_check.py")]),
+        (".style_check.py", [sys.executable, "-B", str(project / ".style_check.py"), str(skill_dir)]),
     ):
         code, out = run(cmd, cwd=project)
         results.append((label, code, out))
@@ -426,6 +495,7 @@ def current_version() -> str:
 
 def build_report(state: dict) -> str:
     diff = state["diff"]
+    commit = state.get("upstream_commit", "")
     lines = [
         "# Skill sync report",
         "",
@@ -433,6 +503,9 @@ def build_report(state: dict) -> str:
         f"- crawl4ai: {state['version']} (skill expects {state['expected']}: "
         f"{'match' if state['version_ok'] else 'MISMATCH'})",
         f"- docs mirror: {len(state['manifest'])} pages, snapshot `{state['snapshot'][:12]}`",
+        f"- docs commit: `{commit[:8] or 'unknown'}` ({state.get('upstream', {}).get('commit_date', 'unknown')})"
+        f" — {state.get('upstream', {}).get('repository', 'unknown')}"
+        f"/{state.get('upstream', {}).get('branch', 'unknown')}",
         f"- baseline: {state['baseline_source']}",
         f"- result: {'in sync' if state['ok'] else 'ACTION REQUIRED'}",
         "",
@@ -476,6 +549,27 @@ def build_report(state: dict) -> str:
         lines.append("")
     elif state.get("probe_error"):
         lines += ["## Probes (live)", "", f"Unavailable this run: `{state['probe_error']}`.", ""]
+    skipped = state.get("upstream", {}).get("skipped") or {}
+    if state.get("new_upstream"):
+        lines += ["## Upstream pages not carried", "",
+                  f"{len(skipped)} upstream page(s) sit outside the mirror's policy; the entries below "
+                  "appeared since the last committed sync.", ""]
+        for key in state["new_upstream"]:
+            repo_path = f"{DOCS_PREFIX}{key}"
+            reason = next((r for path, r in skipped.items() if path.startswith(repo_path)),
+                          "not carried by the current policy")
+            lines.append(f"- `{repo_path}` — {reason}")
+        lines.append("")
+    if state.get("agent"):
+        attempts = state["agent"].get("attempts") or []
+        lines += ["## Agent pass", ""]
+        if state["agent"].get("skipped"):
+            lines.append(f"- skipped: {state['agent']['skipped']}")
+        for attempt in attempts:
+            outcome = "accepted" if attempt["accepted"] else attempt["outcome"]
+            lines.append(f"- `{attempt['model'] or 'the configured CLI'}`: exit {attempt['exit']}, "
+                         f"{attempt['actions_after']} action(s) left — {outcome}")
+        lines.append("")
     lines += ["## Actions", ""]
     lines += [f"- [ ] {action}" for action in state["actions"]] or ["- [ ] none"]
     lines.append("")
@@ -489,7 +583,17 @@ def actions_for(state: dict) -> list[str]:
                        "re-read the changed APIs and update references/API.md, then re-run this pipeline")
     for name in state["diff"]["added"]:
         if not state["cited"].get(name):
-            actions.append(f"decide whether `{name}` belongs in the skill (routing row, recipe) or in CURATED_OUT")
+            actions.append(f"decide whether `{name}` belongs in the skill (routing row, recipe) or stays "
+                           "out of the mirror (SECTIONS/CURATED_OUT in scripts/sync_docs_repo.py)")
+    upstream_pages = state.get("upstream", {}).get("skipped") or {}
+    for key in state.get("new_upstream", []):
+        repo_path = f"{DOCS_PREFIX}{key}"
+        reason = next((r for path, r in upstream_pages.items() if path.startswith(repo_path)), "")
+        actions.append(f"upstream now offers `{repo_path}` ({reason or 'not carried by the current policy'}): "
+                       "carry it or leave it out, by editing scripts/sync_docs_repo.py")
+    if not state.get("upstream_commit"):
+        actions.append("the docs mirror carries no `_upstream.json`: run scripts/sync_docs_repo.py so the "
+                       "skill can be stamped with the upstream commit it was verified against")
     for kind in ("changed", "removed"):
         for name in state["diff"][kind]:
             cited = state["cited"].get(name)
@@ -506,6 +610,110 @@ def actions_for(state: dict) -> list[str]:
     if state["pending_coverage"]:
         actions.append("re-run this pipeline with write access so the merged coverage is persisted")
     return actions
+
+
+def load_models(path: Path | None, extra: list[str]) -> list[str]:
+    """Model ids in priority order: what --model names first, then what the models file lists."""
+    models = list(extra)
+    if path is not None:
+        document = load_json_document(path)
+        if document is None:
+            raise Failure(f"no readable model list at {path}")
+        listed = document.get("models")
+        if not isinstance(listed, list) or not all(isinstance(item, str) for item in listed):
+            raise Failure(f"{path} must be an object with a \"models\" list of ids")
+        models += [model for model in listed if model not in models]
+    return models
+
+
+def agent_attempts(template: str, models: list[str]) -> list[tuple[str, list[str]]]:
+    """One (model, argv) per attempt: the template as given, or once per model when it has {model}."""
+    if "{model}" not in template:
+        return [("", split_command(template))]
+    if not models:
+        raise Failure("--agent-cmd contains {model} but no model id was given: pass --models-file or --model")
+    return [(model, split_command(template.replace("{model}", model))) for model in models]
+
+
+def snapshot_skill(skill_dir: Path) -> Path:
+    """A copy of the skill as it stands now, so a rejected attempt can be undone exactly."""
+    root = Path(tempfile.mkdtemp(prefix="skill-snapshot-"))
+    return Path(shutil.copytree(skill_dir, root / skill_dir.name,
+                                ignore=shutil.ignore_patterns("__pycache__", "*.pyc")))
+
+
+def restore_skill(snapshot: Path, skill_dir: Path) -> None:
+    """Put the skill back exactly as snapshotted, dropping whatever the failed attempt wrote."""
+    shutil.rmtree(skill_dir, ignore_errors=True)
+    shutil.copytree(snapshot, skill_dir)
+
+
+def run_agent(args, state: dict, docs_dir: Path, skill_dir: Path, check_api_path: Path,
+              report_path: Path, write: bool) -> dict:
+    """Hand the report to an agent CLI, once per model, and accept the first attempt that leaves a
+    verdict of "in sync".
+
+    An attempt counts only if the process exits 0, both gates stay green and the action list is
+    empty: a partial pass is reverted (the skill goes back to the snapshot taken here) and the next
+    model starts from that same clean tree, so no attempt inherits another's half-finished prose.
+    The record of every attempt lands in the report, because an unattended run has to say which
+    model did the work and which ones failed.
+    """
+    try:
+        models = load_models(Path(args.models_file).resolve() if args.models_file else None, args.model)
+        attempts = agent_attempts(args.agent_cmd, models)
+    except Failure as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        raise
+    prompt = agent_prompt(report_path, docs_dir, skill_dir, check_api_path)
+    before_actions, before_coverage = list(state["actions"]), list(state["coverage"])
+    snapshot = snapshot_skill(skill_dir)
+    record: dict = {"attempts": [], "accepted": "", "skipped": ""}
+    print(f"[agent] {len(attempts)} model(s) to try, {len(before_actions)} action(s) to close",
+          file=sys.stderr)
+    try:
+        for model, argv in attempts:
+            code, out = run([*argv, prompt], cwd=PROJECT)
+            print(f"[agent] {model or 'configured CLI'}: exit {code}", file=sys.stderr)
+            if out:
+                print(out[-2000:], file=sys.stderr)
+            accepted, outcome = False, f"exit {code}"
+            if code == 0:
+                # Re-derive the verdict from the tree the agent left behind: merge the names its new
+                # prose cites, re-run the gates, re-read the mirror, re-census the citations.
+                try:
+                    state.update(survey(docs_dir, skill_dir, Path(args.baseline) if args.baseline else None))
+                except Failure as exc:
+                    print(f"error: {exc}", file=sys.stderr)
+                    raise
+                api_text = check_api_path.read_text(encoding="utf-8")
+                _, after = sync_coverage(skill_dir, api_text,
+                                         derived_coverage(skill_dir, coverage_names(api_text)), write)
+                state["coverage"] = before_coverage + [item for item in after if item not in before_coverage]
+                state["pending_coverage"] = bool(state["coverage"]) and not write
+                state["gates"] = gate_results(PROJECT, skill_dir)
+                state["actions"] = actions_for(state)
+                state["ok"] = not state["actions"]
+                red = [label for label, gate_code, _ in state["gates"] if gate_code]
+                accepted = state["ok"]
+                outcome = "accepted" if accepted else (
+                    f"discarded: gate {', '.join(red)} red" if red else
+                    f"discarded: {len(state['actions'])} action(s) left, none closed")
+            record["attempts"].append({"model": model, "exit": code, "actions_after": len(state["actions"]),
+                                       "accepted": accepted, "outcome": outcome})
+            if accepted:
+                record["accepted"] = model
+                break
+            restore_skill(snapshot, skill_dir)
+            state.update(survey(docs_dir, skill_dir, Path(args.baseline) if args.baseline else None))
+            state["coverage"] = list(before_coverage)
+            state["gates"] = gate_results(PROJECT, skill_dir)
+            state["actions"] = actions_for(state)
+            state["ok"] = not state["actions"]
+    finally:
+        shutil.rmtree(snapshot.parent, ignore_errors=True)
+    state["agent"] = record
+    return state
 
 
 def main() -> int:
@@ -527,7 +735,14 @@ def main() -> int:
     parser.add_argument("--baseline", help="manifest to diff against (default: the committed one)")
     parser.add_argument("--report", default=str(REPORT), help=f"report path (default: {REPORT})")
     parser.add_argument("--probe", action="store_true", help="re-observe the quoted values with a live crawl")
-    parser.add_argument("--agent-cmd", default="", help="agent CLI prefix for the prose pass; the report path is appended")
+    parser.add_argument("--agent-cmd", default="",
+                        help="agent CLI prefix for the prose pass; '{model}' is replaced per attempt and the "
+                             "prompt is appended")
+    parser.add_argument("--model", action="append", default=[],
+                        help="model id for a {model} attempt; repeat to set the order")
+    parser.add_argument("--models-file", help="JSON file with a \"models\" list, tried in order after --model")
+    parser.add_argument("--force-agent", action="store_true",
+                        help="run the agent pass even when the report lists no action")
     parser.add_argument("--check-only", action="store_true", help="verify without writing anything")
     parser.add_argument("--json", action="store_true", help="machine-readable summary on stdout")
     args = parser.parse_args()
@@ -568,6 +783,7 @@ def main() -> int:
         skill_text = (skill_dir / "SKILL.md").read_text(encoding="utf-8")
         stamped, stamps = stamp_front_matter(skill_text, {
             "api-tracked": version,
+            "docs-commit": surveyed["upstream_commit"],
             "docs-snapshot": snapshot[:16],
             "docs-pages": str(len(manifest)),
             "docs-synced": today,
@@ -588,6 +804,8 @@ def main() -> int:
         "version_ok": expected == "unknown" or version.split(".")[:2] == expected.split(".")[:2],
         "manifest": manifest, "previous": previous or {}, "snapshot": snapshot,
         "baseline_source": baseline_source, "diff": diff, "cited": cited, "stamps": stamps, "leads": leads,
+        "upstream": surveyed["upstream"], "upstream_baseline": surveyed["upstream_baseline"],
+        "upstream_commit": surveyed["upstream_commit"], "new_upstream": surveyed["new_upstream"],
         "gates": gates, "coverage": coverage, "probes": observed, "ok": True, "probe_error": probe_error,
         "pending_coverage": bool(coverage) and not write,
     }
@@ -599,26 +817,19 @@ def main() -> int:
         report_path.write_text(build_report(state), encoding="utf-8")
 
     if args.agent_cmd:
-        prompt = agent_prompt(report_path, docs_dir, skill_dir, check_api_path)
-        code, out = run([*split_command(args.agent_cmd), prompt], cwd=PROJECT)
-        print(f"[agent] exit {code}", file=sys.stderr)
-        if out:
-            print(out[-2000:], file=sys.stderr)
-        if code == 0:
-            # Re-derive the verdict from the tree the agent left behind: merge the names its new
-            # prose cites, re-run the gates, re-read the mirror, re-census the citations.
+        if state["actions"] or args.force_agent:
             try:
-                state.update(survey(docs_dir, skill_dir, Path(args.baseline) if args.baseline else None))
+                state = run_agent(args, state, docs_dir, skill_dir, check_api_path, report_path, write)
             except Failure as exc:
                 print(f"error: {exc}", file=sys.stderr)
                 return 2
-            api_text = check_api_path.read_text(encoding="utf-8")
-            _, after = sync_coverage(skill_dir, api_text,
-                                     derived_coverage(skill_dir, coverage_names(api_text)), write)
-            state["coverage"] = coverage + [item for item in after if item not in coverage]
-            state["pending_coverage"] = bool(state["coverage"]) and not write
-            state["gates"] = gate_results(PROJECT, skill_dir)
-            state["actions"] = actions_for(state)
+            if write:
+                report_path.write_text(build_report(state), encoding="utf-8")
+        else:
+            # Nothing to close: an unattended run must not spend a model on a tree that is already
+            # in sync. `--force-agent` is how a maintainer asks for a prose pass anyway.
+            state["agent"] = {"attempts": [], "accepted": "", "skipped": "the report lists no action"}
+            print("[agent] skipped: the report lists no action", file=sys.stderr)
             state["ok"] = not state["actions"]
             if write:
                 report_path.write_text(build_report(state), encoding="utf-8")
@@ -628,12 +839,15 @@ def main() -> int:
     if args.json:
         print(json.dumps({
             "version": version, "docs_pages": len(state["manifest"]), "snapshot": state["snapshot"][:16],
-            "baseline": state["baseline_source"], "diff": {k: len(v) for k, v in state["diff"].items()},
+            "docs_commit": state["upstream_commit"], "baseline": state["baseline_source"],
+            "diff": {k: len(v) for k, v in state["diff"].items()},
             "gates": {label: code for label, code, _ in state["gates"]}, "coverage_changes": len(state["coverage"]),
-            "actions": state["actions"], "report": str(report_path) if write else None,
+            "agent": state.get("agent", {}), "actions": state["actions"],
+            "report": str(report_path) if write else None,
         }, indent=2))
     else:
-        print(f"docs: {len(state['manifest'])} pages, snapshot {state['snapshot'][:12]}, baseline {state['baseline_source']}")
+        print(f"docs: {len(state['manifest'])} pages at {state['upstream_commit'][:8] or 'unknown'}, "
+              f"snapshot {state['snapshot'][:12]}, baseline {state['baseline_source']}")
         print(f"docs diff: {', '.join(f'{k}={len(v)}' for k, v in state['diff'].items())}")
         for label, code, out in state["gates"]:
             print(f"gate {label}: exit {code}")
@@ -641,6 +855,11 @@ def main() -> int:
             print(f"coverage {change}")
         for claim, documented, observed in observed:
             print(f"probe {claim}: documented {documented}, observed {observed}")
+        for attempt in state.get("agent", {}).get("attempts", []):
+            print(f"agent {attempt['model'] or 'cli'}: exit {attempt['exit']}, "
+                  f"{attempt['actions_after']} action(s) left, {attempt['outcome']}")
+        if state.get("agent", {}).get("skipped"):
+            print(f"agent skipped: {state['agent']['skipped']}")
         for action in state["actions"]:
             print(f"action {action}")
         if write:

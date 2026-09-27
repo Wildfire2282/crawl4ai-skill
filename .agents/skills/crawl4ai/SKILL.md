@@ -7,9 +7,10 @@ metadata:
   upstream: https://docs.crawl4ai.com
   api-tracked: 0.9.4
   verified: "2026-09-27"
-  docs-snapshot: d179c20858e8ef55
+  docs-snapshot: 083d26a852889812
   docs-pages: 48
-  docs-synced: 2026-09-27
+  docs-synced: 2026-09-28
+  docs-commit: 1f68e5bd7c29f2067a1ef74f28dbf4dc20686a06
 ---
 
 # Crawl4AI

@@ -1,0 +1,22 @@
+{
+  // OpenCode V2 reads `permissions` as one ordered array; the last matching rule wins, and rules here
+  // are appended after the built-in base policy (`*` allowed, external directories and `.env` reads
+  // asked). Two consequences the unattended run depends on:
+  //
+  //   external_directory — the agent reads the installed crawl4ai package outside this checkout. With
+  //   the base policy that is an `ask`, and a non-interactive run cannot answer it, so the update
+  //   workflow passes `--auto` (auto-approves everything not explicitly denied) and this rule says out
+  //   loud that outside-the-checkout reads are expected.
+  //
+  //   shell git push / git commit — denied here as well as by the workflow: the run pushes through a
+  //   token the agent never holds, and only after every gate is green. A `deny` survives `--auto`.
+  //
+  // V1 spelled this `"permission": "allow"`; V2 normalises that legacy field, but the native form is
+  // what the docs describe and what makes the exclusions visible.
+  "$schema": "https://opencode.ai/config.json",
+  "permissions": [
+    { "action": "external_directory", "resource": "*", "effect": "allow" },
+    { "action": "shell", "resource": "git push *", "effect": "deny" },
+    { "action": "shell", "resource": "git commit *", "effect": "deny" }
+  ]
+}

@@ -1,25 +1,31 @@
 ---
 source: https://docs.crawl4ai.com/core/page-interaction/
 title: "Page Interaction"
-fetched: 2026-09-27
+fetched: 2026-09-28
 ---
 
 # Page Interaction
-Crawl4AI provides powerful features for interacting with **dynamic** webpages, handling JavaScript execution, waiting for conditions, and managing multi-step flows. By combining **js_code** , **wait_for** , and certain **CrawlerRunConfig** parameters, you can:
-  1. Click “Load More” buttons
-  2. Fill forms and submit them
-  3. Wait for elements or data to appear
-  4. Reuse sessions across multiple steps
 
+Crawl4AI provides powerful features for interacting with **dynamic** webpages, handling JavaScript execution, waiting for conditions, and managing multi-step flows. By combining **js_code**, **wait_for**, and certain **CrawlerRunConfig** parameters, you can:
+
+1. Click “Load More” buttons  
+2. Fill forms and submit them  
+3. Wait for elements or data to appear  
+4. Reuse sessions across multiple steps  
 
 Below is a quick overview of how to do it.
-* * *
-## 1. JavaScript Execution
-### Basic Execution
-**`js_code`**in**`CrawlerRunConfig`**accepts either a single JS string or a list of JS snippets. It runs**after** `wait_for` and `delay_before_return_html` — so the page is fully loaded when your code executes.
-**Example** : We'll scroll to the bottom of the page, then optionally click a "Load More" button.
 
-```
+---
+
+## 1. JavaScript Execution
+
+### Basic Execution
+
+**`js_code`** in **`CrawlerRunConfig`** accepts either a single JS string or a list of JS snippets. It runs **after** `wait_for` and `delay_before_return_html` — so the page is fully loaded when your code executes.
+
+**Example**: We'll scroll to the bottom of the page, then optionally click a "Load More" button.
+
+```python
 import asyncio
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 
@@ -40,7 +46,7 @@ async def main():
     js_commands = [
         "window.scrollTo(0, document.body.scrollHeight);",
         # 'More' link on Hacker News
-        "document.querySelector('a.morelink')?.click();",
+        "document.querySelector('a.morelink')?.click();",  
     ]
     config = CrawlerRunConfig(js_code=js_commands)
 
@@ -53,11 +59,16 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-Copy
 ```
 
-**Relevant`CrawlerRunConfig` params**: - **`js_code`**: JavaScript to run**after** `wait_for` and `delay_before_return_html` complete. Runs on the fully-loaded page. - **`js_code_before_wait`**: JavaScript to run**before** `wait_for`. Use when you need to trigger loading that `wait_for` then checks. - **`js_only`**: If set to`True` on subsequent calls, indicates we're continuing an existing session without a new full navigation. - **`session_id`**: If you want to keep the same page across multiple calls, specify an ID.
+**Relevant `CrawlerRunConfig` params**:
+- **`js_code`**: JavaScript to run **after** `wait_for` and `delay_before_return_html` complete. Runs on the fully-loaded page.
+- **`js_code_before_wait`**: JavaScript to run **before** `wait_for`. Use when you need to trigger loading that `wait_for` then checks.
+- **`js_only`**: If set to `True` on subsequent calls, indicates we're continuing an existing session without a new full navigation.
+- **`session_id`**: If you want to keep the same page across multiple calls, specify an ID.
+
 ### Execution Order
+
 Understanding when your JavaScript runs relative to other pipeline steps:
 
 ```
@@ -68,34 +79,35 @@ Understanding when your JavaScript runs relative to other pipeline steps:
 5. js_code                 ← runs on the fully-loaded page
 6. flatten_shadow_dom      ← if enabled
 7. page.content()          ← HTML capture
-Copy
 ```
 
 If you need JS to trigger something and then wait for the result, use `js_code_before_wait` + `wait_for`:
 
-```
+```python
 config = CrawlerRunConfig(
     # Click a tab first
     js_code_before_wait="document.querySelector('#specs-tab')?.click();",
     # Then wait for the tab content to appear
     wait_for="css:#specs-panel .content",
 )
-Copy
 ```
 
-* * *
+---
+
 ## 2. Wait Conditions
+
 ### 2.1 CSS-Based Waiting
+
 Sometimes, you just want to wait for a specific element to appear. For example:
 
-```
+```python
 import asyncio
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 
 async def main():
     config = CrawlerRunConfig(
         # Wait for at least 30 items on Hacker News
-        wait_for="css:.athing:nth-child(30)"
+        wait_for="css:.athing:nth-child(30)"  
     )
     async with AsyncWebCrawler() as crawler:
         result = await crawler.arun(
@@ -104,34 +116,39 @@ async def main():
         )
         print("We have at least 30 items loaded!")
         # Rough check
-        print("Total items in HTML:", result.cleaned_html.count("athing"))
+        print("Total items in HTML:", result.cleaned_html.count("athing"))  
 
 if __name__ == "__main__":
     asyncio.run(main())
-Copy
 ```
 
-**Key param** : - **`wait_for="css:..."`**: Tells the crawler to wait until that CSS selector is present.
+**Key param**:
+- **`wait_for="css:..."`**: Tells the crawler to wait until that CSS selector is present.
+
 ### 2.2 JavaScript-Based Waiting
+
 For more complex conditions (e.g., waiting for content length to exceed a threshold), prefix `js:`:
 
-```
+```python
 wait_condition = """() => {
     const items = document.querySelectorAll('.athing');
     return items.length > 50;  // Wait for at least 51 items
 }"""
 
 config = CrawlerRunConfig(wait_for=f"js:{wait_condition}")
-Copy
 ```
 
-**Behind the Scenes** : Crawl4AI keeps polling the JS function until it returns `true` or a timeout occurs.
-* * *
+**Behind the Scenes**: Crawl4AI keeps polling the JS function until it returns `true` or a timeout occurs.
+
+---
+
 ## 3. Handling Dynamic Content
-Many modern sites require **multiple steps** : scrolling, clicking “Load More,” or updating via JavaScript. Below are typical patterns.
+
+Many modern sites require **multiple steps**: scrolling, clicking “Load More,” or updating via JavaScript. Below are typical patterns.
+
 ### 3.1 Load More Example (Hacker News “More” Link)
 
-```
+```python
 import asyncio
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 
@@ -151,9 +168,9 @@ async def main():
         load_more_js = [
             "window.scrollTo(0, document.body.scrollHeight);",
             # The "More" link at page bottom
-            "document.querySelector('a.morelink')?.click();"
+            "document.querySelector('a.morelink')?.click();"  
         ]
-
+        
         next_page_conf = CrawlerRunConfig(
             js_code=load_more_js,
             wait_for="""js:() => {
@@ -174,15 +191,20 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-Copy
 ```
 
-**Key params** : - **`session_id="hn_session"`**: Keep the same page across multiple calls to`arun()`. - **`js_only=True`**: We’re not performing a full reload, just applying JS in the existing page. -**`wait_for`**with`js:` : Wait for item count to grow beyond 30.
-* * *
+**Key params**:
+- **`session_id="hn_session"`**: Keep the same page across multiple calls to `arun()`.
+- **`js_only=True`**: We’re not performing a full reload, just applying JS in the existing page.
+- **`wait_for`** with `js:`: Wait for item count to grow beyond 30.
+
+---
+
 ### 3.2 Form Interaction
+
 If the site has a search or login form, you can fill fields and submit them with **`js_code`**. For instance, if GitHub had a local search form:
 
-```
+```python
 js_form_interaction = """
 document.querySelector('#your-search').value = 'TypeScript commits';
 document.querySelector('form').submit();
@@ -193,30 +215,34 @@ config = CrawlerRunConfig(
     wait_for="css:.commit"
 )
 result = await crawler.arun(url="https://github.com/search", config=config)
-Copy
 ```
 
-**In reality** : Replace IDs or classes with the real site’s form selectors.
-* * *
+**In reality**: Replace IDs or classes with the real site’s form selectors.
+
+---
+
 ## 4. Timing Control
-1. **`page_timeout`**(ms): Overall page load or script execution time limit.
-2. **`delay_before_return_html`**(seconds): Wait an extra moment before capturing the final HTML.
-3. **`mean_delay`** & **`max_range`**: If you call`arun_many()` with multiple URLs, these add a random pause between each request.
-**Example** :
 
-```
+1. **`page_timeout`** (ms): Overall page load or script execution time limit.  
+2. **`delay_before_return_html`** (seconds): Wait an extra moment before capturing the final HTML.  
+3. **`mean_delay`** & **`max_range`**: If you call `arun_many()` with multiple URLs, these add a random pause between each request.
+
+**Example**:
+
+```python
 config = CrawlerRunConfig(
     page_timeout=60000,  # 60s limit
     delay_before_return_html=2.5
 )
-Copy
 ```
 
-* * *
+---
+
 ## 5. Multi-Step Interaction Example
-Below is a simplified script that does multiple “Load More” clicks on GitHub’s TypeScript commits page. It **re-uses** the same session to accumulate new commits each time. The code includes the relevant **`CrawlerRunConfig`**parameters you’d rely on.
 
-```
+Below is a simplified script that does multiple “Load More” clicks on GitHub’s TypeScript commits page. It **re-uses** the same session to accumulate new commits each time. The code includes the relevant **`CrawlerRunConfig`** parameters you’d rely on.
+
+```python
 import asyncio
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 
@@ -226,7 +252,7 @@ async def multi_page_commits():
         verbose=True
     )
     session_id = "github_ts_commits"
-
+    
     base_wait = """js:() => {
         const commits = document.querySelectorAll('li.Box-sc-g0xbh4-0 h4');
         return commits.length > 0;
@@ -253,7 +279,7 @@ async def multi_page_commits():
         const button = document.querySelector(selector);
         if (button) button.click();
         """
-
+        
         # Wait until new commits appear
         wait_for_more = """js:() => {
             const commits = document.querySelectorAll('li.Box-sc-g0xbh4-0 h4');
@@ -288,20 +314,21 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-Copy
 ```
 
-**Key Points** :
-  * **`session_id`**: Keep the same page open.
-  * **`js_code`**+**`wait_for`**+**`js_only=True`**: We do partial refreshes, waiting for new commits to appear.
-  * **`cache_mode=CacheMode.BYPASS`**ensures we always see fresh data each step.
+**Key Points**:
 
+- **`session_id`**: Keep the same page open.  
+- **`js_code`** + **`wait_for`** + **`js_only=True`**: We do partial refreshes, waiting for new commits to appear.  
+- **`cache_mode=CacheMode.BYPASS`** ensures we always see fresh data each step.
 
-* * *
+---
+
 ## 6. Combine Interaction with Extraction
-Once dynamic content is loaded, you can attach an **`extraction_strategy`**(like`JsonCssExtractionStrategy` or `LLMExtractionStrategy`). For example:
 
-```
+Once dynamic content is loaded, you can attach an **`extraction_strategy`** (like `JsonCssExtractionStrategy` or `LLMExtractionStrategy`). For example:
+
+```python
 from crawl4ai import JsonCssExtractionStrategy
 
 schema = {
@@ -317,53 +344,65 @@ config = CrawlerRunConfig(
     wait_for=wait_for_more,
     extraction_strategy=JsonCssExtractionStrategy(schema)
 )
-Copy
 ```
 
 When done, check `result.extracted_content` for the JSON.
-* * *
+
+---
+
 ## 7. Shadow DOM Flattening
+
 Sites built with **Web Components** (Stencil, Lit, Shoelace, etc.) render content inside Shadow DOM — an encapsulated sub-tree that is invisible to normal page serialization. Set `flatten_shadow_dom=True` to extract it:
 
-```
+```python
 config = CrawlerRunConfig(
     flatten_shadow_dom=True,
     wait_until="load",
     delay_before_return_html=3.0,  # give components time to hydrate
 )
-Copy
 ```
 
 This walks all shadow trees, resolves `<slot>` projections, and produces flat HTML. It also force-opens closed shadow roots via an init script. For details and a full example, see [Flattening Shadow DOM](https://docs.crawl4ai.com/core/content-selection/#31-flattening-shadow-dom) and [`shadow_dom_crawling.py`](https://github.com/unclecode/crawl4ai/blob/main/docs/examples/shadow_dom_crawling.py).
-* * *
+
+---
+
 ## 8. Relevant `CrawlerRunConfig` Parameters
+
 Below are the key interaction-related parameters in `CrawlerRunConfig`. For a full list, see [Configuration Parameters](https://docs.crawl4ai.com/api/parameters/).
-  * **`js_code`**: JavaScript to run after`wait_for` + `delay_before_return_html`, on the fully-loaded page.
-  * **`js_code_before_wait`**: JavaScript to run before`wait_for`. For triggering loading that `wait_for` then checks.
-  * **`js_only`**: If`True` , no new page navigation—only JS in the existing session.
-  * **`wait_for`**: CSS (`"css:..."`) or JS (`"js:..."`) expression to wait for.
-  * **`session_id`**: Reuse the same page across calls.
-  * **`cache_mode`**: Whether to read/write from the cache or bypass.
-  * **`flatten_shadow_dom`**: Flatten Shadow DOM content into the light DOM before capture.
-  * **`process_iframes`**: Inline iframe content into the main document.
-  * **`remove_overlay_elements`**: Remove certain popups automatically.
-  * **`remove_consent_popups`**: Remove GDPR/cookie consent popups from known CMP providers (OneTrust, Cookiebot, Didomi, etc.).
-  * **`simulate_user`,`override_navigator` , `magic`**: Anti-bot or "human-like" interactions.
 
+- **`js_code`**: JavaScript to run after `wait_for` + `delay_before_return_html`, on the fully-loaded page.
+- **`js_code_before_wait`**: JavaScript to run before `wait_for`. For triggering loading that `wait_for` then checks.
+- **`js_only`**: If `True`, no new page navigation—only JS in the existing session.
+- **`wait_for`**: CSS (`"css:..."`) or JS (`"js:..."`) expression to wait for.
+- **`session_id`**: Reuse the same page across calls.
+- **`cache_mode`**: Whether to read/write from the cache or bypass.
+- **`flatten_shadow_dom`**: Flatten Shadow DOM content into the light DOM before capture.
+- **`process_iframes`**: Inline iframe content into the main document.
+- **`remove_overlay_elements`**: Remove certain popups automatically.
+- **`remove_consent_popups`**: Remove GDPR/cookie consent popups from known CMP providers (OneTrust, Cookiebot, Didomi, etc.).
+- **`simulate_user`, `override_navigator`, `magic`**: Anti-bot or "human-like" interactions.
 
-* * *
+---
+
 ## 9. Conclusion
+
 Crawl4AI's **page interaction** features let you:
-1. **Execute JavaScript** for scrolling, clicks, or form filling.
-2. **Wait** for CSS or custom JS conditions before capturing data.
-3. **Handle** multi-step flows (like “Load More”) with partial reloads or persistent sessions.
-4. **Flatten Shadow DOM** on Web Component sites to extract hidden content. 5. Combine with **structured extraction** for dynamic sites.
+
+1. **Execute JavaScript** for scrolling, clicks, or form filling.  
+2. **Wait** for CSS or custom JS conditions before capturing data.  
+3. **Handle** multi-step flows (like “Load More”) with partial reloads or persistent sessions.  
+4. **Flatten Shadow DOM** on Web Component sites to extract hidden content.
+5. Combine with **structured extraction** for dynamic sites.
+
 With these tools, you can scrape modern, interactive webpages confidently. For advanced hooking, user simulation, or in-depth config, check the [API reference](https://docs.crawl4ai.com/api/parameters/) or related advanced docs. Happy scripting!
-* * *
+
+---
+
 ## 10. Virtual Scrolling
+
 For sites that use **virtual scrolling** (where content is replaced rather than appended as you scroll, like Twitter or Instagram), Crawl4AI provides a dedicated `VirtualScrollConfig`:
 
-```
+```python
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, VirtualScrollConfig
 
 async def crawl_twitter_timeline():
@@ -374,25 +413,26 @@ async def crawl_twitter_timeline():
         scroll_by="container_height",   # Scroll by container height each time
         wait_after_scroll=1.0          # Wait 1 second after each scroll
     )
-
+    
     config = CrawlerRunConfig(
         virtual_scroll_config=virtual_config
     )
-
+    
     async with AsyncWebCrawler() as crawler:
         result = await crawler.arun(
             url="https://twitter.com/search?q=AI",
             config=config
         )
         # result.html now contains ALL tweets from the virtual scroll
-Copy
 ```
 
 ### Virtual Scroll vs JavaScript Scrolling
-| Feature  | Virtual Scroll  | JS Code Scrolling  |
-| --- | --- | --- |
-| **Use Case**  | Content replaced during scroll  | Content appended or simple scroll  |
-| **Configuration**  |  `VirtualScrollConfig` object  |  `js_code` with scroll commands  |
-| **Automatic Merging**  | Yes - merges all unique content  | No - captures final state only  |
-| **Best For**  | Twitter, Instagram, virtual tables  | Traditional pages, load more buttons  |
+
+| Feature | Virtual Scroll | JS Code Scrolling |
+|---------|---------------|-------------------|
+| **Use Case** | Content replaced during scroll | Content appended or simple scroll |
+| **Configuration** | `VirtualScrollConfig` object | `js_code` with scroll commands |
+| **Automatic Merging** | Yes - merges all unique content | No - captures final state only |
+| **Best For** | Twitter, Instagram, virtual tables | Traditional pages, load more buttons |
+
 For detailed examples and configuration options, see the [Virtual Scroll documentation](https://docs.crawl4ai.com/advanced/virtual-scroll/).

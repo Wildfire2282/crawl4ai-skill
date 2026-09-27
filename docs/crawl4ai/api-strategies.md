@@ -1,57 +1,64 @@
 ---
 source: https://docs.crawl4ai.com/api/strategies/
 title: "Extraction & Chunking Strategies API"
-fetched: 2026-09-27
+fetched: 2026-09-28
 ---
 
 # Extraction & Chunking Strategies API
+
 This documentation covers the API reference for extraction and chunking strategies in Crawl4AI.
+
 ## Extraction Strategies
-All extraction strategies inherit from the base `ExtractionStrategy` class and implement two key methods: - `extract(url: str, html: str) -> List[Dict[str, Any]]` - `run(url: str, sections: List[str]) -> List[Dict[str, Any]]`
+
+All extraction strategies inherit from the base `ExtractionStrategy` class and implement two key methods:
+- `extract(url: str, html: str) -> List[Dict[str, Any]]`
+- `run(url: str, sections: List[str]) -> List[Dict[str, Any]]`
+
 ### LLMExtractionStrategy
+
 Used for extracting structured data using Language Models.
 
-```
+```python
 LLMExtractionStrategy(
     # Required Parameters
     provider: str = DEFAULT_PROVIDER,     # LLM provider (e.g., "ollama/llama2")
     api_token: Optional[str] = None,      # API token
-
+    
     # Extraction Configuration
     instruction: str = None,              # Custom extraction instruction
     schema: Dict = None,                  # Pydantic model schema for structured data
     extraction_type: str = "block",       # "block" or "schema"
-
+    
     # Chunking Parameters
     chunk_token_threshold: int = 4000,    # Maximum tokens per chunk
     overlap_rate: float = 0.1,           # Overlap between chunks
     word_token_rate: float = 0.75,       # Word to token conversion rate
     apply_chunking: bool = True,         # Enable/disable chunking
-
+    
     # API Configuration
     base_url: str = None,                # Base URL for API
     extra_args: Dict = {},               # Additional provider arguments
     verbose: bool = False                # Enable verbose logging
 )
-Copy
 ```
 
 ### RegexExtractionStrategy
+
 Used for fast pattern-based extraction of common entities using regular expressions.
 
-```
+```python
 RegexExtractionStrategy(
     # Pattern Configuration
     pattern: IntFlag = RegexExtractionStrategy.Nothing,  # Bit flags of built-in patterns to use
     custom: Optional[Dict[str, str]] = None,           # Custom pattern dictionary {label: regex}
-
+    
     # Input Format
     input_format: str = "fit_html",                    # "html", "markdown", "text" or "fit_html"
 )
 
 # Built-in Patterns as Bit Flags
 RegexExtractionStrategy.Email           # Email addresses
-RegexExtractionStrategy.PhoneIntl       # International phone numbers
+RegexExtractionStrategy.PhoneIntl       # International phone numbers 
 RegexExtractionStrategy.PhoneUS         # US-format phone numbers
 RegexExtractionStrategy.Url             # HTTP/HTTPS URLs
 RegexExtractionStrategy.IPv4            # IPv4 addresses
@@ -72,36 +79,36 @@ RegexExtractionStrategy.MacAddr         # MAC addresses
 RegexExtractionStrategy.Iban            # International bank account numbers
 RegexExtractionStrategy.CreditCard      # Credit card numbers
 RegexExtractionStrategy.All             # All available patterns
-Copy
 ```
 
 ### CosineStrategy
+
 Used for content similarity-based extraction and clustering.
 
-```
+```python
 CosineStrategy(
     # Content Filtering
     semantic_filter: str = None,        # Topic/keyword filter
     word_count_threshold: int = 10,     # Minimum words per cluster
     sim_threshold: float = 0.3,         # Similarity threshold
-
+    
     # Clustering Parameters
     max_dist: float = 0.2,             # Maximum cluster distance
     linkage_method: str = 'ward',       # Clustering method
     top_k: int = 3,                    # Top clusters to return
-
+    
     # Model Configuration
     model_name: str = 'sentence-transformers/all-MiniLM-L6-v2',  # Embedding model
-
+    
     verbose: bool = False              # Enable verbose logging
 )
-Copy
 ```
 
 ### JsonCssExtractionStrategy
+
 Used for CSS selector-based structured data extraction.
 
-```
+```python
 JsonCssExtractionStrategy(
     schema: Dict[str, Any],    # Extraction schema
     verbose: bool = False      # Enable verbose logging
@@ -124,48 +131,50 @@ schema = {
         }
     ]
 }
-Copy
 ```
 
 ## Chunking Strategies
+
 All chunking strategies inherit from `ChunkingStrategy` and implement the `chunk(text: str) -> list` method.
+
 ### RegexChunking
+
 Splits text based on regex patterns.
 
-```
+```python
 RegexChunking(
     patterns: List[str] = None  # Regex patterns for splitting
                                # Default: [r'\n\n']
 )
-Copy
 ```
 
 ### SlidingWindowChunking
+
 Creates overlapping chunks with a sliding window approach.
 
-```
+```python
 SlidingWindowChunking(
     window_size: int = 100,    # Window size in words
     step: int = 50             # Step size between windows
 )
-Copy
 ```
 
 ### OverlappingWindowChunking
+
 Creates chunks with specified overlap.
 
-```
+```python
 OverlappingWindowChunking(
     window_size: int = 1000,   # Chunk size in words
     overlap: int = 100         # Overlap size in words
 )
-Copy
 ```
 
 ## Usage Examples
+
 ### LLM Extraction
 
-```
+```python
 from pydantic import BaseModel
 from crawl4ai import LLMExtractionStrategy
 from crawl4ai import LLMConfig
@@ -191,12 +200,11 @@ result = await crawler.arun(
 
 # Access extracted data
 data = json.loads(result.extracted_content)
-Copy
 ```
 
 ### Regex Extraction
 
-```
+```python
 import json
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, RegexExtractionStrategy
 
@@ -216,7 +224,7 @@ async with AsyncWebCrawler() as crawler:
     # Get sample HTML first
     sample_result = await crawler.arun("https://example.com/products")
     html = sample_result.markdown.fit_html
-
+    
     # Generate regex pattern once
     pattern = RegexExtractionStrategy.generate_pattern(
         label="price",
@@ -224,29 +232,28 @@ async with AsyncWebCrawler() as crawler:
         query="Product prices in USD format",
         llm_config=LLMConfig(provider="openai/gpt-4o-mini")
     )
-
+    
     # Save pattern for reuse
     import json
     with open("price_pattern.json", "w") as f:
         json.dump(pattern, f)
-
+    
     # Use pattern for extraction (no LLM calls)
     strategy = RegexExtractionStrategy(custom=pattern)
     result = await crawler.arun(
         url="https://example.com/products",
         config=CrawlerRunConfig(extraction_strategy=strategy)
     )
-
+    
     # Process results
     data = json.loads(result.extracted_content)
     for item in data:
         print(f"{item['label']}: {item['value']}")
-Copy
 ```
 
 ### CSS Extraction
 
-```
+```python
 from crawl4ai import JsonCssExtractionStrategy
 
 # Define schema
@@ -280,12 +287,11 @@ result = await crawler.arun(
     url="https://example.com/products",
     extraction_strategy=strategy
 )
-Copy
 ```
 
 ### Content Chunking
 
-```
+```python
 from crawl4ai.chunking_strategy import OverlappingWindowChunking
 from crawl4ai import LLMConfig
 
@@ -305,108 +311,97 @@ result = await crawler.arun(
     url="https://example.com/long-article",
     extraction_strategy=strategy
 )
-Copy
 ```
 
 ## Best Practices
-  1. **Choose the Right Strategy**
-  2. Use `RegexExtractionStrategy` for common data types like emails, phones, URLs, dates
-  3. Use `JsonCssExtractionStrategy` for well-structured HTML with consistent patterns
-  4. Use `LLMExtractionStrategy` for complex, unstructured content requiring reasoning
-  5. Use `CosineStrategy` for content similarity and clustering
-  6. **Strategy Selection Guide**
 
-```
-Is the target data a common type (email/phone/date/URL)?
-→ RegexExtractionStrategy
+1. **Choose the Right Strategy**
+   - Use `RegexExtractionStrategy` for common data types like emails, phones, URLs, dates
+   - Use `JsonCssExtractionStrategy` for well-structured HTML with consistent patterns
+   - Use `LLMExtractionStrategy` for complex, unstructured content requiring reasoning
+   - Use `CosineStrategy` for content similarity and clustering
 
-Does the page have consistent HTML structure?
-→ JsonCssExtractionStrategy or JsonXPathExtractionStrategy
+2. **Strategy Selection Guide**
+   ```
+   Is the target data a common type (email/phone/date/URL)? 
+   → RegexExtractionStrategy
+   
+   Does the page have consistent HTML structure?
+   → JsonCssExtractionStrategy or JsonXPathExtractionStrategy
+   
+   Is the data semantically complex or unstructured?
+   → LLMExtractionStrategy
+   
+   Need to find content similar to a specific topic?
+   → CosineStrategy
+   ```
 
-Is the data semantically complex or unstructured?
-→ LLMExtractionStrategy
+3. **Optimize Chunking**
+   ```python
+   # For long documents
+   strategy = LLMExtractionStrategy(
+       chunk_token_threshold=2000,  # Smaller chunks
+       overlap_rate=0.1           # 10% overlap
+   )
+   ```
 
-Need to find content similar to a specific topic?
-→ CosineStrategy
-Copy
-```
+4. **Combine Strategies for Best Performance**
+   ```python
+   # First pass: Extract structure with CSS
+   css_strategy = JsonCssExtractionStrategy(product_schema)
+   css_result = await crawler.arun(url, config=CrawlerRunConfig(extraction_strategy=css_strategy))
+   product_data = json.loads(css_result.extracted_content)
+   
+   # Second pass: Extract specific fields with regex
+   descriptions = [product["description"] for product in product_data]
+   regex_strategy = RegexExtractionStrategy(
+       pattern=RegexExtractionStrategy.Email | RegexExtractionStrategy.PhoneUS,
+       custom={"dimension": r"\d+x\d+x\d+ (?:cm|in)"}
+   )
+   
+   # Process descriptions with regex
+   for text in descriptions:
+       matches = regex_strategy.extract("", text)  # Direct extraction
+   ```
 
-  7. **Optimize Chunking**
+5. **Handle Errors**
+   ```python
+   try:
+       result = await crawler.arun(
+           url="https://example.com",
+           extraction_strategy=strategy
+       )
+       if result.success:
+           content = json.loads(result.extracted_content)
+   except Exception as e:
+       print(f"Extraction failed: {e}")
+   ```
 
-```
-# For long documents
-strategy = LLMExtractionStrategy(
-    chunk_token_threshold=2000,  # Smaller chunks
-    overlap_rate=0.1           # 10% overlap
-)
-Copy
-```
+6. **Monitor Performance**
+   ```python
+   strategy = CosineStrategy(
+       verbose=True,  # Enable logging
+       word_count_threshold=20,  # Filter short content
+       top_k=5  # Limit results
+   )
+   ```
 
-  8. **Combine Strategies for Best Performance**
-
-```
-# First pass: Extract structure with CSS
-css_strategy = JsonCssExtractionStrategy(product_schema)
-css_result = await crawler.arun(url, config=CrawlerRunConfig(extraction_strategy=css_strategy))
-product_data = json.loads(css_result.extracted_content)
-
-# Second pass: Extract specific fields with regex
-descriptions = [product["description"] for product in product_data]
-regex_strategy = RegexExtractionStrategy(
-    pattern=RegexExtractionStrategy.Email | RegexExtractionStrategy.PhoneUS,
-    custom={"dimension": r"\d+x\d+x\d+ (?:cm|in)"}
-)
-
-# Process descriptions with regex
-for text in descriptions:
-    matches = regex_strategy.extract("", text)  # Direct extraction
-Copy
-```
-
-  9. **Handle Errors**
-
-```
-try:
-    result = await crawler.arun(
-        url="https://example.com",
-        extraction_strategy=strategy
-    )
-    if result.success:
-        content = json.loads(result.extracted_content)
-except Exception as e:
-    print(f"Extraction failed: {e}")
-Copy
-```
-
-  10. **Monitor Performance**
-
-```
-strategy = CosineStrategy(
-    verbose=True,  # Enable logging
-    word_count_threshold=20,  # Filter short content
-    top_k=5  # Limit results
-)
-Copy
-```
-
-  11. **Cache Generated Patterns**
-
-```
-# For RegexExtractionStrategy pattern generation
-import json
-from pathlib import Path
-
-cache_dir = Path("./pattern_cache")
-cache_dir.mkdir(exist_ok=True)
-pattern_file = cache_dir / "product_pattern.json"
-
-if pattern_file.exists():
-    with open(pattern_file) as f:
-        pattern = json.load(f)
-else:
-    # Generate once with LLM
-    pattern = RegexExtractionStrategy.generate_pattern(...)
-    with open(pattern_file, "w") as f:
-        json.dump(pattern, f)
-Copy
-```
+7. **Cache Generated Patterns**
+   ```python
+   # For RegexExtractionStrategy pattern generation
+   import json
+   from pathlib import Path
+   
+   cache_dir = Path("./pattern_cache")
+   cache_dir.mkdir(exist_ok=True)
+   pattern_file = cache_dir / "product_pattern.json"
+   
+   if pattern_file.exists():
+       with open(pattern_file) as f:
+           pattern = json.load(f)
+   else:
+       # Generate once with LLM
+       pattern = RegexExtractionStrategy.generate_pattern(...)
+       with open(pattern_file, "w") as f:
+           json.dump(pattern, f)
+   ```

@@ -1,6 +1,19 @@
+"""Style gate for the skill's prose: no pronouns, contractions, filler or emoji.
+
+The skill is read by an agent, so its prose is written in the register of a reference: no second
+person, no marketing filler, and the version target stated once. This gate is a real check — it exits
+non-zero when it finds an issue, because an unattended run has to stop on a red gate rather than
+commit prose that breaks the register.
+
+Usage: python .style_check.py [skill-directory]   # default: .agents/skills/crawl4ai
+Exit codes: 0 clean, 1 one or more issues (printed with file and line).
+"""
+
 import re
+import sys
 from pathlib import Path
-skill = Path(".agents/skills/crawl4ai")
+
+skill = Path(sys.argv[1] if len(sys.argv) > 1 else ".agents/skills/crawl4ai")
 files = sorted([skill / "SKILL.md",
                 *sorted((skill / "references").glob("*.md")),
                 skill / "scripts/check_api.py",
@@ -13,9 +26,13 @@ COLLOQUIAL = re.compile(r"\b(simply|easily|basically|really|very|pretty|a lot|lo
                         r"note that|keep in mind|aim for|try to|make sure)\b", re.I)
 EMOJI = re.compile("[\U0001F300-\U0001FAFF\u2600-\u27BF]")
 issues = 0
+
+
 def prose(t: str) -> str:
     t = re.sub(r"```.*?```", "", t, flags=re.S)
     return re.sub(r"`[^`]*`", "", t)
+
+
 for f in files:
     text = f.read_text(encoding="utf-8"); body = prose(text)
     found = []
@@ -28,3 +45,4 @@ for f in files:
     for i in found:
         print("   ", i); issues += 1
 print("issue count:", issues)
+raise SystemExit(1 if issues else 0)

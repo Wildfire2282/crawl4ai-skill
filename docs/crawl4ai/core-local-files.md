@@ -1,15 +1,18 @@
 ---
 source: https://docs.crawl4ai.com/core/local-files/
 title: "Prefix-Based Input Handling in Crawl4AI"
-fetched: 2026-09-27
+fetched: 2026-09-28
 ---
 
 # Prefix-Based Input Handling in Crawl4AI
+
 This guide will walk you through using the Crawl4AI library to crawl web pages, local HTML files, and raw HTML strings. We'll demonstrate these capabilities using a Wikipedia page as an example.
+
 ## Crawling a Web URL
+
 To crawl a live web page, provide the URL starting with `http://` or `https://`, using a `CrawlerRunConfig` object:
 
-```
+```python
 import asyncio
 from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
 
@@ -17,7 +20,7 @@ async def crawl_web():
     config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS)
     async with AsyncWebCrawler() as crawler:
         result = await crawler.arun(
-            url="https://en.wikipedia.org/wiki/apple",
+            url="https://en.wikipedia.org/wiki/apple", 
             config=config
         )
         if result.success:
@@ -27,13 +30,13 @@ async def crawl_web():
             print(f"Failed to crawl: {result.error_message}")
 
 asyncio.run(crawl_web())
-Copy
 ```
 
 ## Crawling a Local HTML File
+
 To crawl a local HTML file, prefix the file path with `file://`.
 
-```
+```python
 import asyncio
 from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
 
@@ -41,7 +44,7 @@ async def crawl_local_file():
     local_file_path = "/path/to/apple.html"  # Replace with your file path
     file_url = f"file://{local_file_path}"
     config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS)
-
+    
     async with AsyncWebCrawler() as crawler:
         result = await crawler.arun(url=file_url, config=config)
         if result.success:
@@ -51,13 +54,13 @@ async def crawl_local_file():
             print(f"Failed to crawl local file: {result.error_message}")
 
 asyncio.run(crawl_local_file())
-Copy
 ```
 
 ## Crawling Raw HTML Content
+
 To crawl raw HTML content, prefix the HTML string with `raw:`.
 
-```
+```python
 import asyncio
 from crawl4ai import AsyncWebCrawler, CacheMode
 from crawl4ai.async_configs import CrawlerRunConfig
@@ -66,7 +69,7 @@ async def crawl_raw_html():
     raw_html = "<html><body><h1>Hello, World!</h1></body></html>"
     raw_html_url = f"raw:{raw_html}"
     config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS)
-
+    
     async with AsyncWebCrawler() as crawler:
         result = await crawler.arun(url=raw_html_url, config=config)
         if result.success:
@@ -76,20 +79,20 @@ async def crawl_raw_html():
             print(f"Failed to crawl raw HTML: {result.error_message}")
 
 asyncio.run(crawl_raw_html())
-Copy
 ```
 
-* * *
+---
+
 # Complete Example
+
 Below is a comprehensive script that:
-  1. Crawls the Wikipedia page for "Apple."
-  2. Saves the HTML content to a local file (`apple.html`).
-  3. Crawls the local HTML file and verifies the markdown length matches the original crawl.
-  4. Crawls the raw HTML content from the saved file and verifies consistency.
 
+1. Crawls the Wikipedia page for "Apple."
+2. Saves the HTML content to a local file (`apple.html`).
+3. Crawls the local HTML file and verifies the markdown length matches the original crawl.
+4. Crawls the raw HTML content from the saved file and verifies consistency.
 
-
-```
+```python
 import os
 import sys
 import asyncio
@@ -152,9 +155,10 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-Copy
 ```
 
-* * *
+---
+
 # Conclusion
-With the unified `url` parameter and prefix-based handling in **Crawl4AI** , you can seamlessly handle web URLs, local HTML files, and raw HTML content. Use `CrawlerRunConfig` for flexible and consistent configuration in all scenarios.
+
+With the unified `url` parameter and prefix-based handling in **Crawl4AI**, you can seamlessly handle web URLs, local HTML files, and raw HTML content. Use `CrawlerRunConfig` for flexible and consistent configuration in all scenarios.

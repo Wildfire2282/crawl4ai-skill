@@ -1,0 +1,10 @@
+{
+  "//": "Free models on OpenCode's Zen endpoint, strongest first, as `opencode/<id>` — the free catalogue is https://opencode.ai/zen/v1/models, described on https://opencode.ai/v2/docs/console/models/. scripts/update_skill.py walks this list when the report has an action to close: a model that cannot be invoked, is unavailable, times out, exits non-zero or leaves the report unresolved is discarded — the skill is restored to the state before the attempt — and the next model starts from that same tree. An unavailable id costs one attempt and about a second, nothing else.",
+  "//2": "Verified against opencode 2.0.18 with no credentials: muse-spark-1.3-contributor-free, nemotron-3-ultra-free, big-pickle and mimo-v2.6-flash-free all answer; mimo-v2.5-free exits 1 with \"Model unavailable\", as do deepseek-v4-flash-free, muse-spark-1.2-contributor-free and jev-1.13-free, so the MiMo slot uses the 2.6-flash id the CLI does resolve. Other working free ids, ready to add below big-pickle: space-bunny-free, longcat-2.5-preview-free, ling-3.0-flash-fin-free, nemotron-3.5-lightning-free. The repository variable SKILL_AGENT_CMD replaces the whole command in the workflow, which ignores this file.",
+  "models": [
+    "opencode/muse-spark-1.3-contributor-free",
+    "opencode/mimo-v2.6-flash-free",
+    "opencode/nemotron-3-ultra-free",
+    "opencode/big-pickle"
+  ]
+}

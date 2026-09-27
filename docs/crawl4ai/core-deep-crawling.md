@@ -1,29 +1,34 @@
 ---
 source: https://docs.crawl4ai.com/core/deep-crawling/
 title: "Deep Crawling"
-fetched: 2026-09-27
+fetched: 2026-09-28
 ---
 
 # Deep Crawling
+
 One of Crawl4AI's most powerful features is its ability to perform **configurable deep crawling** that can explore websites beyond a single page. With fine-tuned control over crawl depth, domain boundaries, and content filtering, Crawl4AI gives you the tools to extract precisely the content you need.
+
 In this tutorial, you'll learn:
-  1. How to set up a **Basic Deep Crawler** with BFS strategy
-  2. Understanding the difference between **streamed and non-streamed** output
-  3. Implementing **filters and scorers** to target specific content
-  4. Creating **advanced filtering chains** for sophisticated crawls
-  5. Using **BestFirstCrawling** for intelligent exploration prioritization
-  6. **Crash recovery** for long-running production crawls
-  7. **Prefetch mode** for fast URL discovery
 
+1. How to set up a **Basic Deep Crawler** with BFS strategy
+2. Understanding the difference between **streamed and non-streamed** output
+3. Implementing **filters and scorers** to target specific content
+4. Creating **advanced filtering chains** for sophisticated crawls
+5. Using **BestFirstCrawling** for intelligent exploration prioritization
+6. **Crash recovery** for long-running production crawls
+7. **Prefetch mode** for fast URL discovery  
 
-> **Prerequisites**
->  - You’ve completed or read [AsyncWebCrawler Basics](https://docs.crawl4ai.com/core/simple-crawling/) to understand how to run a simple crawl.
->  - You know how to configure `CrawlerRunConfig`.
-* * *
+> **Prerequisites**  
+> - You’ve completed or read [AsyncWebCrawler Basics](https://docs.crawl4ai.com/core/simple-crawling/) to understand how to run a simple crawl.  
+> - You know how to configure `CrawlerRunConfig`.
+
+---
+
 ## 1. Quick Example
-Here's a minimal code snippet that implements a basic deep crawl using the **BFSDeepCrawlStrategy** :
 
-```
+Here's a minimal code snippet that implements a basic deep crawl using the **BFSDeepCrawlStrategy**:
+
+```python
 import asyncio
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
@@ -33,18 +38,18 @@ async def main():
     # Configure a 2-level deep crawl
     config = CrawlerRunConfig(
         deep_crawl_strategy=BFSDeepCrawlStrategy(
-            max_depth=2,
+            max_depth=2, 
             include_external=False
         ),
         scraping_strategy=LXMLWebScrapingStrategy(),
         verbose=True
     )
-
+    
     async with AsyncWebCrawler() as crawler:
         results = await crawler.arun("https://example.com", config=config)
-
+        
         print(f"Crawled {len(results)} pages in total")
-
+        
         # Access individual results
         for result in results[:3]:  # Show first 3 results
             print(f"URL: {result.url}")
@@ -52,17 +57,24 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-Copy
 ```
 
-**What's happening?**
-- `BFSDeepCrawlStrategy(max_depth=2, include_external=False)` instructs Crawl4AI to: - Crawl the starting page (depth 0) plus 2 more levels - Stay within the same domain (don't follow external links) - Each result contains metadata like the crawl depth - Results are returned as a list after all crawling is complete
-* * *
+**What's happening?**  
+- `BFSDeepCrawlStrategy(max_depth=2, include_external=False)` instructs Crawl4AI to:
+  - Crawl the starting page (depth 0) plus 2 more levels
+  - Stay within the same domain (don't follow external links)
+- Each result contains metadata like the crawl depth
+- Results are returned as a list after all crawling is complete
+
+---
+
 ## 2. Understanding Deep Crawling Strategy Options
+
 ### 2.1 BFSDeepCrawlStrategy (Breadth-First Search)
+
 The **BFSDeepCrawlStrategy** uses a breadth-first approach, exploring all links at one depth before moving deeper:
 
-```
+```python
 from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
 
 # Basic configuration
@@ -72,14 +84,21 @@ strategy = BFSDeepCrawlStrategy(
     max_pages=50,              # Maximum number of pages to crawl (optional)
     score_threshold=0.3,       # Minimum score for URLs to be crawled (optional)
 )
-Copy
 ```
 
-**Key parameters:** - **`max_depth`**: Number of levels to crawl beyond the starting page -**`include_external`**: Whether to follow links to other domains -**`max_pages`**: Maximum number of pages to crawl (default: infinite) -**`score_threshold`**: Minimum score for URLs to be crawled (default: -inf) -**`filter_chain`**: FilterChain instance for URL filtering -**`url_scorer`**: Scorer instance for evaluating URLs
+**Key parameters:**
+- **`max_depth`**: Number of levels to crawl beyond the starting page
+- **`include_external`**: Whether to follow links to other domains
+- **`max_pages`**: Maximum number of pages to crawl (default: infinite)
+- **`score_threshold`**: Minimum score for URLs to be crawled (default: -inf)
+- **`filter_chain`**: FilterChain instance for URL filtering
+- **`url_scorer`**: Scorer instance for evaluating URLs
+
 ### 2.2 DFSDeepCrawlStrategy (Depth-First Search)
+
 The **DFSDeepCrawlStrategy** uses a depth-first approach, explores as far down a branch as possible before backtracking.
 
-```
+```python
 from crawl4ai.deep_crawling import DFSDeepCrawlStrategy
 
 # Basic configuration
@@ -89,14 +108,21 @@ strategy = DFSDeepCrawlStrategy(
     max_pages=30,              # Maximum number of pages to crawl (optional)
     score_threshold=0.5,       # Minimum score for URLs to be crawled (optional)
 )
-Copy
 ```
 
-**Key parameters:** - **`max_depth`**: Number of levels to crawl beyond the starting page -**`include_external`**: Whether to follow links to other domains -**`max_pages`**: Maximum number of pages to crawl (default: infinite) -**`score_threshold`**: Minimum score for URLs to be crawled (default: -inf) -**`filter_chain`**: FilterChain instance for URL filtering -**`url_scorer`**: Scorer instance for evaluating URLs
+**Key parameters:**
+- **`max_depth`**: Number of levels to crawl beyond the starting page
+- **`include_external`**: Whether to follow links to other domains
+- **`max_pages`**: Maximum number of pages to crawl (default: infinite)
+- **`score_threshold`**: Minimum score for URLs to be crawled (default: -inf)
+- **`filter_chain`**: FilterChain instance for URL filtering
+- **`url_scorer`**: Scorer instance for evaluating URLs
+
 ### 2.3 BestFirstCrawlingStrategy (⭐️ - Recommended Deep crawl strategy)
+
 For more intelligent crawling, use **BestFirstCrawlingStrategy** with scorers to prioritize the most relevant pages:
 
-```
+```python
 from crawl4ai.deep_crawling import BestFirstCrawlingStrategy
 from crawl4ai.deep_crawling.scorers import KeywordRelevanceScorer
 
@@ -113,16 +139,24 @@ strategy = BestFirstCrawlingStrategy(
     url_scorer=scorer,
     max_pages=25,              # Maximum number of pages to crawl (optional)
 )
-Copy
 ```
 
-This crawling approach: - Evaluates each discovered URL based on scorer criteria - Visits higher-scoring pages first - Helps focus crawl resources on the most relevant content - Can limit total pages crawled with `max_pages` - Does not need `score_threshold` as it naturally prioritizes by score
-* * *
+This crawling approach:
+- Evaluates each discovered URL based on scorer criteria
+- Visits higher-scoring pages first
+- Helps focus crawl resources on the most relevant content
+- Can limit total pages crawled with `max_pages`
+- Does not need `score_threshold` as it naturally prioritizes by score
+
+---
+
 ## 3. Streaming vs. Non-Streaming Results
+
 Crawl4AI can return results in two modes:
+
 ### 3.1 Non-Streaming Mode (Default)
 
-```
+```python
 config = CrawlerRunConfig(
     deep_crawl_strategy=BFSDeepCrawlStrategy(max_depth=1),
     stream=False  # Default behavior
@@ -131,16 +165,19 @@ config = CrawlerRunConfig(
 async with AsyncWebCrawler() as crawler:
     # Wait for ALL results to be collected before returning
     results = await crawler.arun("https://example.com", config=config)
-
+    
     for result in results:
         process_result(result)
-Copy
 ```
 
-**When to use non-streaming mode:** - You need the complete dataset before processing - You're performing batch operations on all results together - Crawl time isn't a critical factor
+**When to use non-streaming mode:**
+- You need the complete dataset before processing
+- You're performing batch operations on all results together
+- Crawl time isn't a critical factor
+
 ### 3.2 Streaming Mode
 
-```
+```python
 config = CrawlerRunConfig(
     deep_crawl_strategy=BFSDeepCrawlStrategy(max_depth=1),
     stream=True  # Enable streaming
@@ -151,16 +188,23 @@ async with AsyncWebCrawler() as crawler:
     async for result in await crawler.arun("https://example.com", config=config):
         # Process each result as it becomes available
         process_result(result)
-Copy
 ```
 
-**Benefits of streaming mode:** - Process results immediately as they're discovered - Start working with early results while crawling continues - Better for real-time applications or progressive display - Reduces memory pressure when handling many pages
-* * *
+**Benefits of streaming mode:**
+- Process results immediately as they're discovered
+- Start working with early results while crawling continues
+- Better for real-time applications or progressive display
+- Reduces memory pressure when handling many pages
+
+---
+
 ## 4. Filtering Content with Filter Chains
+
 Filters help you narrow down which pages to crawl. Combine multiple filters using **FilterChain** for powerful targeting.
+
 ### 4.1 Basic URL Pattern Filter
 
-```
+```python
 from crawl4ai.deep_crawling.filters import FilterChain, URLPatternFilter
 
 # Only follow URLs containing "blog" or "docs"
@@ -172,12 +216,11 @@ config = CrawlerRunConfig(
         filter_chain=FilterChain([url_filter])
     )
 )
-Copy
 ```
 
 ### 4.2 Combining Multiple Filters
 
-```
+```python
 from crawl4ai.deep_crawling.filters import (
     FilterChain,
     URLPatternFilter,
@@ -189,13 +232,13 @@ from crawl4ai.deep_crawling.filters import (
 filter_chain = FilterChain([
     # Only follow URLs with specific patterns
     URLPatternFilter(patterns=["*guide*", "*tutorial*"]),
-
+    
     # Only crawl specific domains
     DomainFilter(
         allowed_domains=["docs.example.com"],
         blocked_domains=["old.docs.example.com"]
     ),
-
+    
     # Only include specific content types
     ContentTypeFilter(allowed_types=["text/html"])
 ])
@@ -206,24 +249,27 @@ config = CrawlerRunConfig(
         filter_chain=filter_chain
     )
 )
-Copy
 ```
 
 ### 4.3 Available Filter Types
+
 Crawl4AI includes several specialized filters:
-  * **`URLPatternFilter`**: Matches URL patterns using wildcard syntax
-  * **`DomainFilter`**: Controls which domains to include or exclude
-  * **`ContentTypeFilter`**: Filters based on HTTP Content-Type
-  * **`ContentRelevanceFilter`**: Uses similarity to a text query
-  * **`SEOFilter`**: Evaluates SEO elements (meta tags, headers, etc.)
 
+- **`URLPatternFilter`**: Matches URL patterns using wildcard syntax
+- **`DomainFilter`**: Controls which domains to include or exclude
+- **`ContentTypeFilter`**: Filters based on HTTP Content-Type
+- **`ContentRelevanceFilter`**: Uses similarity to a text query
+- **`SEOFilter`**: Evaluates SEO elements (meta tags, headers, etc.)
 
-* * *
+---
+
 ## 5. Using Scorers for Prioritized Crawling
+
 Scorers assign priority values to discovered URLs, helping the crawler focus on the most relevant content first.
+
 ### 5.1 KeywordRelevanceScorer
 
-```
+```python
 from crawl4ai.deep_crawling.scorers import KeywordRelevanceScorer
 from crawl4ai.deep_crawling import BestFirstCrawlingStrategy
 
@@ -246,16 +292,22 @@ async with AsyncWebCrawler() as crawler:
     async for result in await crawler.arun("https://example.com", config=config):
         score = result.metadata.get("score", 0)
         print(f"Score: {score:.2f} | {result.url}")
-Copy
 ```
 
-**How scorers work:** - Evaluate each discovered URL before crawling - Calculate relevance based on various signals - Help the crawler make intelligent choices about traversal order
-* * *
+**How scorers work:**
+- Evaluate each discovered URL before crawling
+- Calculate relevance based on various signals
+- Help the crawler make intelligent choices about traversal order
+
+---
+
 ## 6. Advanced Filtering Techniques
+
 ### 6.1 SEO Filter for Quality Assessment
+
 The **SEOFilter** helps you identify pages with strong SEO characteristics:
 
-```
+```python
 from crawl4ai.deep_crawling.filters import FilterChain, SEOFilter
 
 # Create an SEO filter that looks for specific keywords in page metadata
@@ -270,13 +322,13 @@ config = CrawlerRunConfig(
         filter_chain=FilterChain([seo_filter])
     )
 )
-Copy
 ```
 
 ### 6.2 Content Relevance Filter
+
 The **ContentRelevanceFilter** analyzes the actual content of pages:
 
-```
+```python
 from crawl4ai.deep_crawling.filters import FilterChain, ContentRelevanceFilter
 
 # Create a content relevance filter
@@ -291,15 +343,19 @@ config = CrawlerRunConfig(
         filter_chain=FilterChain([relevance_filter])
     )
 )
-Copy
 ```
 
-This filter: - Measures semantic similarity between query and page content - It's a BM25-based relevance filter using head section content
-* * *
+This filter:
+- Measures semantic similarity between query and page content
+- It's a BM25-based relevance filter using head section content
+
+---
+
 ## 7. Building a Complete Advanced Crawler
+
 This example combines multiple techniques for a sophisticated crawl:
 
-```
+```python
 import asyncio
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 from crawl4ai.content_scraping_strategy import LXMLWebScrapingStrategy
@@ -320,10 +376,10 @@ async def run_advanced_crawler():
             allowed_domains=["docs.example.com"],
             blocked_domains=["old.docs.example.com"]
         ),
-
+        
         # URL patterns to include
         URLPatternFilter(patterns=["*guide*", "*tutorial*", "*blog*"]),
-
+        
         # Content type filtering
         ContentTypeFilter(allowed_types=["text/html"])
     ])
@@ -372,66 +428,83 @@ async def run_advanced_crawler():
 
 if __name__ == "__main__":
     asyncio.run(run_advanced_crawler())
-Copy
 ```
 
-* * *
+---
+
+
 ## 8. Limiting and Controlling Crawl Size
+
 ### 8.1 Using max_pages
+
 You can limit the total number of pages crawled with the `max_pages` parameter:
 
-```
+```python
 # Limit to exactly 20 pages regardless of depth
 strategy = BFSDeepCrawlStrategy(
     max_depth=3,
     max_pages=20
 )
-Copy
 ```
 
-This feature is useful for: - Controlling API costs - Setting predictable execution times - Focusing on the most important content - Testing crawl configurations before full execution
+This feature is useful for:
+- Controlling API costs
+- Setting predictable execution times
+- Focusing on the most important content
+- Testing crawl configurations before full execution
+
 ### 8.2 Using score_threshold
+
 For BFS and DFS strategies, you can set a minimum score threshold to only crawl high-quality pages:
 
-```
+```python
 # Only follow links with scores above 0.4
 strategy = DFSDeepCrawlStrategy(
     max_depth=2,
     url_scorer=KeywordRelevanceScorer(keywords=["api", "guide", "reference"]),
     score_threshold=0.4  # Skip URLs with scores below this value
 )
-Copy
 ```
 
 Note that for BestFirstCrawlingStrategy, score_threshold is not needed since pages are already processed in order of highest score first.
+
 ## 9. Common Pitfalls & Tips
+
 1.**Set realistic limits.** Be cautious with `max_depth` values > 3, which can exponentially increase crawl size. Use `max_pages` to set hard limits.
+
 2.**Don't neglect the scoring component.** BestFirstCrawling works best with well-tuned scorers. Experiment with keyword weights for optimal prioritization.
-3.**Be a good web citizen.** Respect robots.txt. (disabled by default)
+
+3.**Be a good web citizen.**  Respect robots.txt. (disabled by default)
+  
 4.**Handle page errors gracefully.** Not all pages will be accessible. Check `result.status` when processing results.
+
 5.**Balance breadth vs. depth.** Choose your strategy wisely - BFS for comprehensive coverage, DFS for deep exploration, BestFirst for focused relevance-based crawling.
+
 6.**Preserve HTTPS for security.** If crawling HTTPS sites that redirect to HTTP, use `preserve_https_for_internal_links=True` to maintain secure connections:
 
-```
+```python
 config = CrawlerRunConfig(
     deep_crawl_strategy=BFSDeepCrawlStrategy(max_depth=2),
     preserve_https_for_internal_links=True  # Keep HTTPS even if server redirects to HTTP
 )
-Copy
 ```
 
 This is especially useful for security-conscious crawling or when dealing with sites that support both protocols.
-* * *
+
+---
+
 ## 10. Crash Recovery for Long-Running Crawls
+
 For production deployments, especially in cloud environments where instances can be terminated unexpectedly, Crawl4AI provides built-in crash recovery support for all deep crawl strategies.
+
 ### 10.1 Enabling State Persistence
+
 All deep crawl strategies (BFS, DFS, Best-First) support two optional parameters:
-  * **`resume_state`**: Pass a previously saved state to resume from a checkpoint
-  * **`on_state_change`**: Async callback fired after each URL is processed
 
+- **`resume_state`**: Pass a previously saved state to resume from a checkpoint
+- **`on_state_change`**: Async callback fired after each URL is processed
 
-
-```
+```python
 from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
 import json
 
@@ -443,13 +516,13 @@ strategy = BFSDeepCrawlStrategy(
     max_depth=3,
     on_state_change=save_state_to_redis,  # Called after each URL
 )
-Copy
 ```
 
 ### 10.2 State Structure
+
 The state dictionary is JSON-serializable and contains:
 
-```
+```python
 {
     "strategy_type": "bfs",  # or "dfs", "best_first"
     "visited": ["url1", "url2", ...],  # Already crawled URLs
@@ -457,12 +530,11 @@ The state dictionary is JSON-serializable and contains:
     "depths": {"url1": 0, "url2": 1},  # Depth tracking
     "pages_crawled": 42  # Counter
 }
-Copy
 ```
 
 ### 10.3 Resuming from a Checkpoint
 
-```
+```python
 import json
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
@@ -482,13 +554,13 @@ config = CrawlerRunConfig(deep_crawl_strategy=strategy)
 async with AsyncWebCrawler() as crawler:
     # Will skip already-visited URLs and continue from pending queue
     results = await crawler.arun(start_url, config=config)
-Copy
 ```
 
 ### 10.4 Manual State Export
+
 You can export the last captured state using `export_state()`. Note that this requires `on_state_change` to be set (state is captured in the callback):
 
-```
+```python
 import json
 
 captured_state = None
@@ -512,12 +584,11 @@ if state:
     # Save to your preferred storage
     with open("crawl_checkpoint.json", "w") as f:
         json.dump(state, f)
-Copy
 ```
 
 ### 10.5 Complete Example: Redis-Based Recovery
 
-```
+```python
 import asyncio
 import json
 import redis.asyncio as redis
@@ -562,19 +633,25 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-Copy
 ```
 
 ### 10.6 Zero Overhead
+
 When `resume_state=None` and `on_state_change=None` (the defaults), there is no performance impact. State tracking only activates when you enable these features.
-* * *
+
+---
+
 ## 11. Cancellation Support for Deep Crawls
+
 For production environments like cloud platforms, you often need to stop a running crawl mid-execution—whether the user changed their mind, specified the wrong URL, or wants to control costs. Crawl4AI provides built-in cancellation support for all deep crawl strategies.
+
 ### 11.1 Two Ways to Cancel
+
 **Option A: Callback-based cancellation** (recommended for external systems)
+
 Use `should_cancel` to check an external source (Redis, database, API) before each URL:
 
-```
+```python
 from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
 
 async def check_if_cancelled():
@@ -587,24 +664,24 @@ strategy = BFSDeepCrawlStrategy(
     max_pages=1000,
     should_cancel=check_if_cancelled,  # Called before each URL
 )
-Copy
 ```
 
 **Option B: Direct cancellation** (for in-process control)
+
 Call `cancel()` directly on the strategy instance:
 
-```
+```python
 strategy = BFSDeepCrawlStrategy(max_depth=3, max_pages=1000)
 
 # In another coroutine or thread:
 strategy.cancel()  # Thread-safe, stops before next URL
-Copy
 ```
 
 ### 11.2 Checking Cancellation Status
+
 Use the `cancelled` property to check if a crawl was cancelled:
 
-```
+```python
 async with AsyncWebCrawler() as crawler:
     results = await crawler.arun(url, config=config)
 
@@ -612,13 +689,13 @@ if strategy.cancelled:
     print(f"Crawl was cancelled after {len(results)} pages")
 else:
     print(f"Crawl completed with {len(results)} pages")
-Copy
 ```
 
 ### 11.3 State Notifications Include Cancelled Flag
+
 When using `on_state_change`, the state dictionary includes a `cancelled` field:
 
-```
+```python
 async def handle_state(state: dict):
     if state.get("cancelled"):
         print("Crawl was cancelled!")
@@ -631,20 +708,21 @@ strategy = BFSDeepCrawlStrategy(
     should_cancel=check_cancelled,
     on_state_change=handle_state,
 )
-Copy
 ```
 
 ### 11.4 Key Behaviors
-| Scenario  | Behavior  |
-| --- | --- |
-| Cancel before first URL  | Returns empty results, `cancelled=True`  |
-| Cancel during crawl  | Completes current URL, then stops  |
-| Callback raises exception  | Logged as warning, crawl continues (fail-open)  |
-| Strategy reuse after cancel  | Works normally (cancel flag auto-resets)  |
-| Sync callback function  | Supported (auto-detected and handled)  |
+
+| Scenario | Behavior |
+|----------|----------|
+| Cancel before first URL | Returns empty results, `cancelled=True` |
+| Cancel during crawl | Completes current URL, then stops |
+| Callback raises exception | Logged as warning, crawl continues (fail-open) |
+| Strategy reuse after cancel | Works normally (cancel flag auto-resets) |
+| Sync callback function | Supported (auto-detected and handled) |
+
 ### 11.5 Complete Example: Cloud Platform Job Cancellation
 
-```
+```python
 import asyncio
 import json
 import redis.asyncio as redis
@@ -707,23 +785,30 @@ async def run_cancellable_crawl(job_id: str, start_url: str):
 #
 # To cancel from another process:
 # redis_client.set("job:job-123:status", "cancelled")
-Copy
 ```
 
 ### 11.6 Supported Strategies
+
 Cancellation works identically across all deep crawl strategies:
-  * **BFSDeepCrawlStrategy** - Breadth-first search
-  * **DFSDeepCrawlStrategy** - Depth-first search
-  * **BestFirstCrawlingStrategy** - Priority-based crawling
 
+- **BFSDeepCrawlStrategy** - Breadth-first search
+- **DFSDeepCrawlStrategy** - Depth-first search
+- **BestFirstCrawlingStrategy** - Priority-based crawling
 
-All strategies support: - `should_cancel` callback parameter - `cancel()` method - `cancelled` property
-* * *
+All strategies support:
+- `should_cancel` callback parameter
+- `cancel()` method
+- `cancelled` property
+
+---
+
 ## 12. Prefetch Mode for Fast URL Discovery
+
 When you need to quickly discover URLs without full page processing, use **prefetch mode**. This is ideal for two-phase crawling where you first map the site, then selectively process specific pages.
+
 ### 12.1 Enabling Prefetch Mode
 
-```
+```python
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 
 config = CrawlerRunConfig(prefetch=True)
@@ -734,29 +819,33 @@ async with AsyncWebCrawler() as crawler:
     # Result contains only HTML and links - no markdown, no extraction
     print(f"Found {len(result.links['internal'])} internal links")
     print(f"Found {len(result.links['external'])} external links")
-Copy
 ```
 
 ### 12.2 What Gets Skipped
-Prefetch mode uses a fast path that bypasses heavy processing:
-| Processing Step  | Normal Mode  | Prefetch Mode  |
-| --- | --- | --- |
-| Fetch HTML  | ✅  | ✅  |
-| Extract links  | ✅  | ✅ (fast `quick_extract_links()`)  |
-| Generate markdown  | ✅  | ❌ Skipped  |
-| Content scraping  | ✅  | ❌ Skipped  |
-| Media extraction  | ✅  | ❌ Skipped  |
-| LLM extraction  | ✅  | ❌ Skipped  |
-### 12.3 Performance Benefit
-  * **Normal mode** : Full pipeline (~2-5 seconds per page)
-  * **Prefetch mode** : HTML + links only (~200-500ms per page)
 
+Prefetch mode uses a fast path that bypasses heavy processing:
+
+| Processing Step | Normal Mode | Prefetch Mode |
+|----------------|-------------|---------------|
+| Fetch HTML | ✅ | ✅ |
+| Extract links | ✅ | ✅ (fast `quick_extract_links()`) |
+| Generate markdown | ✅ | ❌ Skipped |
+| Content scraping | ✅ | ❌ Skipped |
+| Media extraction | ✅ | ❌ Skipped |
+| LLM extraction | ✅ | ❌ Skipped |
+
+### 12.3 Performance Benefit
+
+- **Normal mode**: Full pipeline (~2-5 seconds per page)
+- **Prefetch mode**: HTML + links only (~200-500ms per page)
 
 This makes prefetch mode **5-10x faster** for URL discovery.
+
 ### 12.4 Two-Phase Crawling Pattern
+
 The most common use case is two-phase crawling:
 
-```
+```python
 import asyncio
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 
@@ -796,28 +885,29 @@ async def two_phase_crawl(start_url: str):
 if __name__ == "__main__":
     results = asyncio.run(two_phase_crawl("https://example.com"))
     print(f"Fully processed {len(results)} pages")
-Copy
 ```
 
 ### 12.5 Use Cases
-  * **Site mapping** : Quickly discover all URLs before deciding what to process
-  * **Link validation** : Check which pages exist without heavy processing
-  * **Selective deep crawl** : Prefetch to find URLs, filter by pattern, then full crawl
-  * **Crawl planning** : Estimate crawl size before committing resources
 
+- **Site mapping**: Quickly discover all URLs before deciding what to process
+- **Link validation**: Check which pages exist without heavy processing
+- **Selective deep crawl**: Prefetch to find URLs, filter by pattern, then full crawl
+- **Crawl planning**: Estimate crawl size before committing resources
 
-* * *
+---
+
 ## 13. Summary & Next Steps
-In this **Deep Crawling with Crawl4AI** tutorial, you learned to:
-  * Configure **BFSDeepCrawlStrategy** , **DFSDeepCrawlStrategy** , and **BestFirstCrawlingStrategy**
-  * Process results in streaming or non-streaming mode
-  * Apply filters to target specific content
-  * Use scorers to prioritize the most relevant pages
-  * Limit crawls with `max_pages` and `score_threshold` parameters
-  * Build a complete advanced crawler with combined techniques
-  * **Implement crash recovery** with `resume_state` and `on_state_change` for production deployments
-  * **Cancel running crawls** with `should_cancel` callback or `cancel()` method for cloud platform job management
-  * **Use prefetch mode** for fast URL discovery and two-phase crawling
 
+In this **Deep Crawling with Crawl4AI** tutorial, you learned to:
+
+- Configure **BFSDeepCrawlStrategy**, **DFSDeepCrawlStrategy**, and **BestFirstCrawlingStrategy**
+- Process results in streaming or non-streaming mode
+- Apply filters to target specific content
+- Use scorers to prioritize the most relevant pages
+- Limit crawls with `max_pages` and `score_threshold` parameters
+- Build a complete advanced crawler with combined techniques
+- **Implement crash recovery** with `resume_state` and `on_state_change` for production deployments
+- **Cancel running crawls** with `should_cancel` callback or `cancel()` method for cloud platform job management
+- **Use prefetch mode** for fast URL discovery and two-phase crawling
 
 With these tools, you can efficiently extract structured data from websites at scale, focusing precisely on the content you need for your specific use case.

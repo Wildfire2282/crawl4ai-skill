@@ -1,19 +1,24 @@
 ---
 source: https://docs.crawl4ai.com/extraction/chunking/
 title: "Chunking Strategies"
-fetched: 2026-09-27
+fetched: 2026-09-28
 ---
 
 # Chunking Strategies
 Chunking strategies are critical for dividing large texts into manageable parts, enabling effective content processing and extraction. These strategies are foundational in cosine similarity-based extraction techniques, which allow users to retrieve only the most relevant chunks of content for a given query. Additionally, they facilitate direct integration into RAG (Retrieval-Augmented Generation) systems for structured and scalable workflows.
+
 ### Why Use Chunking?
-1. **Cosine Similarity and Query Relevance** : Prepares chunks for semantic similarity analysis. 2. **RAG System Integration** : Seamlessly processes and stores chunks for retrieval. 3. **Structured Processing** : Allows for diverse segmentation methods, such as sentence-based, topic-based, or windowed approaches.
+1. **Cosine Similarity and Query Relevance**: Prepares chunks for semantic similarity analysis.
+2. **RAG System Integration**: Seamlessly processes and stores chunks for retrieval.
+3. **Structured Processing**: Allows for diverse segmentation methods, such as sentence-based, topic-based, or windowed approaches.
+
 ### Methods of Chunking
+
 #### 1. Regex-Based Chunking
 Splits text based on regular expression patterns, useful for coarse segmentation.
-**Code Example** :
 
-```
+**Code Example**:
+```python
 class RegexChunking:
     def __init__(self, patterns=None):
         self.patterns = patterns or [r'\n\n']  # Default pattern for paragraphs
@@ -30,14 +35,13 @@ text = """This is the first paragraph.
 This is the second paragraph."""
 chunker = RegexChunking()
 print(chunker.chunk(text))
-Copy
 ```
 
 #### 2. Sentence-Based Chunking
 Divides text into sentences using NLP tools, ideal for extracting meaningful statements.
-**Code Example** :
 
-```
+**Code Example**:
+```python
 from nltk.tokenize import sent_tokenize
 
 class NlpSentenceChunking:
@@ -49,14 +53,13 @@ class NlpSentenceChunking:
 text = "This is sentence one. This is sentence two."
 chunker = NlpSentenceChunking()
 print(chunker.chunk(text))
-Copy
 ```
 
 #### 3. Topic-Based Segmentation
 Uses algorithms like TextTiling to create topic-coherent chunks.
-**Code Example** :
 
-```
+**Code Example**:
+```python
 from nltk.tokenize import TextTilingTokenizer
 
 class TopicSegmentationChunking:
@@ -71,14 +74,13 @@ text = """This is an introduction.
 This is a detailed discussion on the topic."""
 chunker = TopicSegmentationChunking()
 print(chunker.chunk(text))
-Copy
 ```
 
 #### 4. Fixed-Length Word Chunking
 Segments text into chunks of a fixed word count.
-**Code Example** :
 
-```
+**Code Example**:
+```python
 class FixedLengthWordChunking:
     def __init__(self, chunk_size=100):
         self.chunk_size = chunk_size
@@ -91,14 +93,13 @@ class FixedLengthWordChunking:
 text = "This is a long text with many words to be chunked into fixed sizes."
 chunker = FixedLengthWordChunking(chunk_size=5)
 print(chunker.chunk(text))
-Copy
 ```
 
 #### 5. Sliding Window Chunking
 Generates overlapping chunks for better contextual coherence.
-**Code Example** :
 
-```
+**Code Example**:
+```python
 class SlidingWindowChunking:
     def __init__(self, window_size=100, step=50):
         self.window_size = window_size
@@ -115,14 +116,13 @@ class SlidingWindowChunking:
 text = "This is a long text to demonstrate sliding window chunking."
 chunker = SlidingWindowChunking(window_size=5, step=2)
 print(chunker.chunk(text))
-Copy
 ```
 
 ### Combining Chunking with Cosine Similarity
 To enhance the relevance of extracted content, chunking strategies can be paired with cosine similarity techniques. Here’s an example workflow:
-**Code Example** :
 
-```
+**Code Example**:
+```python
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -137,7 +137,7 @@ class CosineSimilarityExtractor:
         return [(chunks[i], similarities[i]) for i in range(len(chunks))]
 
 # Example Workflow
-text = """This is a sample document. It has multiple sentences.
+text = """This is a sample document. It has multiple sentences. 
 We are testing chunking and similarity."""
 
 chunker = SlidingWindowChunking(window_size=5, step=3)
@@ -147,5 +147,4 @@ extractor = CosineSimilarityExtractor(query)
 relevant_chunks = extractor.find_relevant_chunks(chunks)
 
 print(relevant_chunks)
-Copy
 ```

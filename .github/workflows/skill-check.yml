@@ -1,7 +1,8 @@
 name: skill-check
 
 # Offline gates. No browsers and no network: every step either introspects the installed package or
-# reads files, so a pull request gets an answer in seconds.
+# reads files, so a pull request — or the push the update workflow just made — gets an answer in
+# seconds. The same gates run inside scripts/update_skill.py before anything is committed.
 
 on:
   push:
@@ -32,7 +33,18 @@ jobs:
         run: python -B .agents/skills/crawl4ai/scripts/check_api.py
 
       - name: Style gate
-        run: python -B .style_check.py
+        run: python -B .style_check.py .agents/skills/crawl4ai
+
+      - name: Agent Skills specification
+        # The reference validator for the published spec: front matter, name, directory match,
+        # description length. Pinned, and it is the spec's own tool — pip installs the console
+        # script as `agentskills`; `python -m skills_ref.cli` is the version-independent form.
+        run: |
+          pip install skills-ref==0.1.1
+          python -m skills_ref.cli validate .agents/skills/crawl4ai
+
+      - name: Mirror, manifest and skill stamps agree
+        run: python -B scripts/sync_docs_repo.py --verify
 
       - name: Skill matches the committed docs snapshot
         run: python -B scripts/update_skill.py --check-only

@@ -1,23 +1,29 @@
 name: skill-update
 
-# Refresh the upstream docs mirror, re-derive the skill from it, run the agent pass over the prose and
-# open a pull request with the result. The deterministic stages are documented in
-# scripts/update_skill.py; the agent pass follows the prompt kit in prompts/skill-sync/ and is
-# re-verified afterwards, so the run goes green only when the report lists no actions.
+# Keep the skill in step with the upstream documentation, unattended. The run probes GitHub for a
+# change under docs/md_v2 (one API request, no installs), and stops there when the mirror and the
+# skill's stamps already agree. Otherwise it mirrors the changed pages, re-derives the skill, runs the
+# gates over the tree the agent pass left behind, and pushes to the branch. A run that cannot reach a
+# green verdict pushes nothing and fails, so the next scheduled run retries from the same state
+# instead of the pipeline advancing past work it did not do.
 
 on:
   schedule:
     - cron: "0 6 * * 1" # Mondays 06:00 UTC
   workflow_dispatch:
     inputs:
-      agent_cmd:
-        description: "Agent CLI prefix for the prose pass ('-' = deterministic stages only, empty = the workflow default)"
-        required: false
-        default: ""
+      mode:
+        description: "auto = probe and sync incrementally; full = refetch every page; agent = also run the prose pass when the report lists no action; deterministic = skip the agent pass"
+        type: choice
+        options:
+          - auto
+          - full
+          - agent
+          - deterministic
+        default: auto
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: write # the run pushes to the branch it was triggered on
 
 concurrency:
   group: skill-update
@@ -27,87 +33,126 @@ jobs:
   update:
     runs-on: ubuntu-latest
     env:
-      # Default: opencode with a Zen free model, which needs no credentials today. Override with the
-      # repository variable SKILL_AGENT_CMD — any agent CLI whose non-interactive prefix is stable.
-      AGENT_CMD: ${{ inputs.agent_cmd || vars.SKILL_AGENT_CMD || 'opencode run --model opencode/big-pickle' }}
-      BRANCH: skill-sync/upstream-docs
+      # Default: opencode 2 with a free Zen model. The free models answer with no credentials, so the
+      # step needs no secret; `{model}` is replaced per attempt from scripts/agent-models.json, and
+      # SKILL_AGENT_CMD (a repository variable) replaces the command outright — name a paid model
+      # there and add its key to this step's env as a secret.
+      #   --standalone  a private server: the shared background service can time out in a fresh
+      #                 container ("Timed out waiting for the background service to start")
+      #   --auto        auto-approve permissions that are not explicitly denied; without it an `ask`
+      #                 (external directory, .env) has no client to answer it in a non-interactive run
+      AGENT_CMD: ${{ vars.SKILL_AGENT_CMD || 'opencode run --standalone --auto --model {model}' }}
+      MODE: ${{ inputs.mode || 'auto' }}
     steps:
       # No persisted credential: the agent runs with broad tool permissions in this checkout, so it
-      # must not hold a push token. The pull-request step supplies its own token below.
+      # must not hold a push token. The credential is installed only for the initial pull and the push.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
 
+      # Setup only: the interpreter is needed by the probe, and the probe itself needs no packages.
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
 
-      - name: Install crawl4ai and its browsers
+      - name: Probe upstream
+        id: probe
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          code=0
+          python scripts/sync_docs_repo.py --check --json > probe.json || code=$?
+          cat probe.json
+          case "$code" in
+            0) echo "needed=false" >> "$GITHUB_OUTPUT" ;;
+            3) echo "needed=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::the upstream probe failed"; exit "$code" ;;
+          esac
+
+      - name: Report a quiet tree
+        if: steps.probe.outputs.needed == 'false'
+        run: |
+          echo "Crawl4AI is already synchronized." >> "$GITHUB_STEP_SUMMARY"
+          echo "the upstream commit and the skill's stamps agree; nothing was downloaded and no model was called"
+
+      - name: Install the pipeline's dependencies
+        if: steps.probe.outputs.needed == 'true'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          crawl4ai-setup
+          crawl4ai-setup   # the probe stage crawls example.com for real
 
       - name: Install the agent CLI
-        continue-on-error: true  # a CLI that will not install must not stop the deterministic stages
+        if: steps.probe.outputs.needed == 'true' && env.MODE != 'deterministic'
+        continue-on-error: true # a CLI that will not install must not stop the deterministic stages
         run: |
-          npm install -g opencode-ai@1.18.32   # pinned: run-mode flags and permission defaults move between releases
+          # OpenCode 2: @opencode/cli ships the native binary (docs: https://opencode.ai/v2/docs/).
+          # Pinned: `run` flags and permission defaults move between releases.
+          npm install -g @opencode/cli@2.0.18
           opencode --version
 
-      - name: Refresh the upstream docs mirror
+      - name: Mirror the upstream documentation
+        if: steps.probe.outputs.needed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          python scripts/mirror_docs_site.py \
-            --root https://docs.crawl4ai.com \
-            --out docs/crawl4ai \
-            --concurrency 6 \
-            --json
+          if [ "$MODE" = "full" ]; then
+            python scripts/sync_docs_repo.py --json --full
+          else
+            python scripts/sync_docs_repo.py --json
+          fi
 
       - name: Update the skill
         id: sync
-        continue-on-error: true
+        if: steps.probe.outputs.needed == 'true'
+        continue-on-error: true # the report is uploaded below even when the verdict is red
         run: |
-          if [ "$AGENT_CMD" = "-" ]; then AGENT_CMD=""; fi
-          AGENT_BIN="${AGENT_CMD%% *}"
-          if [ -n "$AGENT_CMD" ] && command -v "$AGENT_BIN" >/dev/null 2>&1; then
-            python scripts/update_skill.py --probe --agent-cmd "$AGENT_CMD"
-          else
-            if [ -n "$AGENT_CMD" ]; then
-              echo "::warning::agent CLI '$AGENT_BIN' is not installed; deterministic stages only"
-            fi
-            python scripts/update_skill.py --probe
+          set -uo pipefail
+          args=(--probe)
+          if [ "$MODE" = "agent" ]; then
+            args+=(--force-agent)   # a maintainer asking for a prose pass on a quiet tree
           fi
+          if [ "$MODE" != "deterministic" ]; then
+            agent_bin="${AGENT_CMD%% *}"
+            if command -v "$agent_bin" >/dev/null 2>&1; then
+              args+=(--agent-cmd "$AGENT_CMD" --models-file scripts/agent-models.json)
+            else
+              echo "::warning::agent CLI '$agent_bin' is not installed; the prose pass is skipped"
+            fi
+          fi
+          python scripts/update_skill.py "${args[@]}"
 
-      - name: Open or update the pull request
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Commit and push
+        if: steps.probe.outputs.needed == 'true' && steps.sync.outcome == 'success'
         run: |
           set -euo pipefail
-          if git diff --quiet && git diff --cached --quiet; then
-            echo "no changes: the skill matches the docs snapshot and the installed package"
-            exit 0
-          fi
           git config user.name "skill-sync[bot]"
           git config user.email "skill-sync[bot]@users.noreply.github.com"
-          git checkout -B "$BRANCH"
-          git add -A
-          git commit -m "chore(skill): sync crawl4ai skill with the upstream docs snapshot"
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git fetch origin "$BRANCH" || true   # refresh the lease so the rolling branch can be updated
-          git push --force-with-lease -u origin "$BRANCH"
-          # Only an open pull request counts: `gh pr view <branch>` also resolves a merged one, which
-          # would leave these commits on the branch with nothing to review them.
-          PR=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
-          if [ -n "$PR" ]; then
-            gh pr edit "$PR" --title "chore(skill): sync with upstream docs" --body-file reports/skill-sync.md
-          else
-            gh pr create --base "$GITHUB_REF_NAME" --head "$BRANCH" \
-              --title "chore(skill): sync with upstream docs" --body-file reports/skill-sync.md
+          # Only what the pipeline owns: an unrelated change in the tree is never swept in.
+          git add -A -- docs/crawl4ai reports/skill-sync.md .agents/skills/crawl4ai scripts prompts \
+            .style_check.py requirements.txt README.md
+          if git diff --cached --quiet; then
+            echo "the pipeline found nothing to commit"
+            exit 0
           fi
+          git commit -m "chore(skill): sync crawl4ai skill with upstream docs"
+          git remote set-url origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"
 
-      - name: Fail when the report still lists actions
+      - name: Keep the report of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skill-sync-report
+          path: reports/skill-sync.md
+          if-no-files-found: ignore
+
+      - name: Fail when the pipeline left actions
         if: steps.sync.outcome == 'failure'
         run: |
-          echo "::warning::the sync left actions for a maintainer or an agent; see reports/skill-sync.md"
+          echo "::error::the sync did not reach a green verdict; reports/skill-sync.md lists the actions it left"
           exit 1
