@@ -26,3 +26,7 @@ Rules that fail the run when broken:
 4. Never delete, weaken or widen a check, a gate or a test to reach green. Fix the cause, or leave the action unresolved in the report.
 5. `SKILL.md` front matter (`metadata:`, `compatibility:` and the `Targets crawl4ai X.Y.x` line) is script-owned.
 6. Anything unresolved stays an action in the report: the next run has to see it, so an action is closed by fixing the cause, never by deleting the line that names it.
+
+On a quiet tree — no upstream drift, no action in the report — the pass may still correct a claim this
+session verifies, and nothing else. A value is restated only because this session observed it, and
+wording-only churn is not a reason to open a pull request. An empty diff is a valid outcome.

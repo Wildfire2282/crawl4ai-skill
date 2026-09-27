@@ -96,8 +96,11 @@ jobs:
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git fetch origin "$BRANCH" || true   # refresh the lease so the rolling branch can be updated
           git push --force-with-lease -u origin "$BRANCH"
-          if gh pr view "$BRANCH" --json number >/dev/null 2>&1; then
-            gh pr edit "$BRANCH" --title "chore(skill): sync with upstream docs" --body-file reports/skill-sync.md
+          # Only an open pull request counts: `gh pr view <branch>` also resolves a merged one, which
+          # would leave these commits on the branch with nothing to review them.
+          PR=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+          if [ -n "$PR" ]; then
+            gh pr edit "$PR" --title "chore(skill): sync with upstream docs" --body-file reports/skill-sync.md
           else
             gh pr create --base "$GITHUB_REF_NAME" --head "$BRANCH" \
               --title "chore(skill): sync with upstream docs" --body-file reports/skill-sync.md
