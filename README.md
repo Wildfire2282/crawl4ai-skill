@@ -109,7 +109,7 @@ from 60 to 5000 requests an hour; the scheduled run's two or three requests fit 
 | `check_api.py` lists (imports, run params, browser params, methods, result fields) | union of the curated list and the names the skill prose cites |
 | `check_api.py` `DEFAULTS` and `REJECTED_RUN_CONFIG_PARAMS` | hand-written: the values the references state |
 | `SKILL.md` prose, `references/*.md` | hand-written; `update_skill.py` reports what to revisit |
-| `reports/skill-sync.md` | generated per run; the artifact a failed run keeps |
+| `reports/skill-sync.md` | generated per run; the artifact a failed run keeps, and the only file a manual run on an unchanged tree rewrites |
 | `[verified: run]` markers | hand-set after executing a crawl. No unattended job writes a date it did not observe |
 
 The pipeline refuses to stamp a version it cannot verify: a changed default, a missing name or a style

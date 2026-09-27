@@ -379,6 +379,12 @@ def read_front_matter(text: str) -> tuple[str, str]:
     return parts[0] + "---" + parts[1] + "---", parts[2]
 
 
+def front_matter_values(text: str) -> dict[str, str]:
+    """The `metadata:` values of SKILL.md as they stand — what a stamp has to compare against."""
+    head, _ = read_front_matter(text)
+    return {name: value for name, value in re.findall(r"^  ([a-z-]+):[ \t]*(.*)$", head, re.M)}
+
+
 def stamp_front_matter(text: str, values: dict[str, str]) -> tuple[str, list[str]]:
     """Set `metadata:` keys and the compatibility target line; returns the text and what changed."""
     head, body = read_front_matter(text)
@@ -781,13 +787,21 @@ def main() -> int:
     stamps: list[str] = []
     if gates_green and write:
         skill_text = (skill_dir / "SKILL.md").read_text(encoding="utf-8")
-        stamped, stamps = stamp_front_matter(skill_text, {
+        values = {
             "api-tracked": version,
             "docs-commit": surveyed["upstream_commit"],
             "docs-snapshot": snapshot[:16],
             "docs-pages": str(len(manifest)),
             "docs-synced": today,
-        })
+        }
+        # `docs-synced` dates the facts, not the run: while the other stamps already describe this
+        # mirror and this package, the existing date stays. A re-run of an unchanged tree therefore
+        # leaves SKILL.md byte-identical, and the unattended workflow has nothing to commit.
+        current = front_matter_values(skill_text)
+        facts = ("api-tracked", "docs-commit", "docs-snapshot", "docs-pages")
+        if current.get("docs-synced") and all(current.get(key) == values[key] for key in facts):
+            values["docs-synced"] = current["docs-synced"]
+        stamped, stamps = stamp_front_matter(skill_text, values)
         if stamped != skill_text:
             (skill_dir / "SKILL.md").write_text(stamped, encoding="utf-8")
 

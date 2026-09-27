@@ -426,16 +426,26 @@ def sync(out: Path, sha: str, commit_date: str, full: bool, as_json: bool) -> in
         entries[rel] = {"path": repo_path, "blob": blob, "title": title}
     removed = prune_stale(set(kept), out)
 
-    write_manifest(out / MANIFEST_NAME, entries)
+    # The outputs carry dates ("synced", "taken"), so rebuild them only when something they describe
+    # actually moved: a page written or removed, a blob or path that changed, a new upstream commit, or
+    # a different set of skipped pages. A `--full` refetch that finds identical bytes therefore leaves
+    # the mirror, the index and the record untouched — including their dates.
+    state = read_json(out / UPSTREAM_NAME)
+    skipped_now = {repo_path: reason for repo_path, reason in sorted(skipped.items())}
+    meta = {rel: [entries[rel]["path"], entries[rel]["blob"]] for rel in entries}
+    previous_meta = {rel: [entry.get("path", ""), entry.get("blob", "")] for rel, entry in previous.items()}
+    unchanged = (not written and not removed and meta == previous_meta
+                 and state.get("commit") == sha and state.get("skipped") == skipped_now)
+    if not unchanged:
+        write_manifest(out / MANIFEST_NAME, entries)
+        write_text(out / INDEX_NAME, build_index(
+            [(rel, entries[rel]["path"]) for rel in sorted(entries)],
+            list(skipped.items()), sha, commit_date, fetched))
+        write_text(out / UPSTREAM_NAME, json.dumps({
+            "repository": REPO, "branch": BRANCH, "commit": sha, "commit_date": commit_date,
+            "synced": fetched, "pages": len(entries), "skipped": skipped_now,
+        }, indent=2, ensure_ascii=False) + "\n")
     manifest = read_json(out / MANIFEST_NAME)
-    write_text(out / INDEX_NAME, build_index(
-        [(rel, entries[rel]["path"]) for rel in sorted(entries)],
-        list(skipped.items()), sha, commit_date, fetched))
-    write_text(out / UPSTREAM_NAME, json.dumps({
-        "repository": REPO, "branch": BRANCH, "commit": sha, "commit_date": commit_date,
-        "synced": fetched, "pages": len(entries),
-        "skipped": {repo_path: reason for repo_path, reason in sorted(skipped.items())},
-    }, indent=2, ensure_ascii=False) + "\n")
 
     new_sections = sorted({repo_path[len(DOCS_PREFIX):].split("/")[0] for repo_path in skipped
                            if "/" in repo_path[len(DOCS_PREFIX):]}
@@ -444,14 +454,15 @@ def sync(out: Path, sha: str, commit_date: str, full: bool, as_json: bool) -> in
         "upstream_commit": sha, "commit_date": commit_date, "pages": len(entries),
         "written": written, "fetched": fetched_pages, "removed": removed, "skipped": len(skipped),
         "skipped_sections": new_sections, "snapshot": docs_snapshot(manifest)[:16],
-        "out": str(out),
+        "changed": not unchanged, "out": str(out),
     }
     if as_json:
         print(json.dumps(summary, indent=2, ensure_ascii=False))
     else:
         print(f"docs: {len(entries)} pages at {sha[:8]} ({commit_date}), snapshot "
               f"{summary['snapshot']}, {len(fetched_pages)} fetched, {len(written)} written, "
-              f"{len(removed)} removed")
+              f"{len(removed)} removed"
+              + ("" if summary["changed"] else " — nothing changed, files left as they were"))
         for name in written:
             print(f"  [written] {name}")
         for name in removed:
