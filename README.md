@@ -41,6 +41,8 @@ flowchart LR
 | `scripts/mirror_docs_site.py` | Fetch the site (sitemap-driven), apply `CURATED_OUT`, rebuild index and manifest, `--reindex` offline |
 | `scripts/update_skill.py` | Snapshot diff, coverage merge, gates, stamps, optional probes and agent pass, report |
 | `reports/skill-sync.md` | Latest run: upstream changes mapped to skill files, gate output, actions |
+| `prompts/skill-sync/` | The update prompt kit: five stages the agent pass follows, entry point `00-overview.md` |
+| `opencode.json` | Tool permissions for the opencode agent pass — `permission: allow`, which also covers paths outside the checkout such as the installed package |
 | `.gitattributes` | LF on both ends of git: the manifest hashes page bytes, so a checkout must not rewrite them |
 | `LICENSE` | Apache-2.0, the license of the upstream project this mirror is derived from |
 | `.evalcheck/` | Calibration runs for the eval suite and the recorded trigger transcripts; scratch, not shipped with the skill |
@@ -81,16 +83,34 @@ style violation turns the gate red, the stamps stay as they were, and the report
 
 | Workflow | Trigger | Runs |
 | --- | --- | --- |
-| `.github/workflows/skill-update.yml` | weekly cron, manual | refresh the mirror, update the skill, hand the report to the agent CLI when `SKILL_AGENT_CMD` is set, re-derive the verdict from the tree that agent left (gates, coverage, citations), push `skill-sync/upstream-docs`, open or edit a pull request, then fail the run if the report still lists actions |
+| `.github/workflows/skill-update.yml` | weekly cron, manual | refresh the mirror, update the skill, install opencode and run the agent pass over `prompts/skill-sync/` (Zen free model by default; `SKILL_AGENT_CMD` overrides it), re-derive the verdict from the tree that agent left (gates, coverage, citations), push `skill-sync/upstream-docs`, open or edit a pull request, then fail the run if the report still lists actions |
 | `.github/workflows/skill-check.yml` | push to `main`, pull request | offline gates: API drift, style, and `update_skill.py --check-only` |
 
 Prerequisites for the update workflow:
 
-- Repository variable `SKILL_AGENT_CMD` (optional) — an agent CLI prefix, for example `omp -p --no-session`. Without it the workflow stops after the deterministic stages and the report holds the actions.
+- Repository variable `SKILL_AGENT_CMD` (optional) — an agent CLI prefix that replaces the workflow default, `opencode run --model opencode/big-pickle`. That default needs no secret: opencode's Zen free models answer without an account today. A CLI that is not installed degrades to the deterministic stages with a warning, and `-` as the manual input skips the agent pass entirely. To run a paid model instead, name it in the variable (`opencode run --model opencode/claude-sonnet-5`) and add the provider key to the update step's `env:` as a secret (`OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}`).
 - The repository setting *Settings → Actions → General → Allow GitHub Actions to create and approve pull requests* must be on: with it off, the branch is pushed and the run then dies on `pull request create failed: GraphQL: GitHub Actions is not permitted to create or approve pull requests`.
 - The built-in `GITHUB_TOKEN` needs `contents: write` and `pull-requests: write`; both workflows declare exactly those, so the repository default may stay read-only — the manual `skill-update` run that pushed `skill-sync/upstream-docs` did so while the default was still read-only.
 
 The pull request carries `reports/skill-sync.md` as its body, and `skill-check` runs on it (a `pull_request` event from a `GITHUB_TOKEN`-authored pull request still starts the workflow; the push that created the branch does not).
+
+## Prompt kit
+
+`prompts/skill-sync/` is what the agent pass is told to follow. `update_skill.py` hands
+`00-overview.md` to the CLI and the CLI reads the rest as ordinary files, so the instructions live
+under version control instead of inside the script.
+
+| File | Stage |
+| --- | --- |
+| `00-overview.md` | Inputs, the order of the stages, and the six rules that fail the run when broken — no unobserved values, no edits to script-owned artefacts, no hand-edited generated lists, no weakening a gate, no hand-edited front matter, no silently dropped action |
+| `01-triage.md` | Read the report; decide per upstream page: belongs in the skill / belongs in `CURATED_OUT` / needs nothing; write the plan before editing |
+| `02-references.md` | `API.md`, `PATTERNS.md`, `TROUBLESHOOTING.md` updated from the mirror and the installed package |
+| `03-skill-md.md` | `SKILL.md` as the routing layer: rows, counts, invariants, preflight |
+| `04-evidence.md` | Which marker each claim earns, and what may never be upgraded |
+| `05-verify.md` | The three commands and the report the session has to finish with |
+
+The agent pass is re-derived afterwards: the gates run again, the names its new prose cites are merged
+into `check_api.py`, and the actions are recomputed, so stage 5 is what the workflow measures.
 
 ## Curation policy
 

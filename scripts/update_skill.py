@@ -13,9 +13,10 @@ Stages, in order:
   5. Probes   — with --probe, re-observe the values the references quote (live crawl, network).
   6. Report   — `reports/skill-sync.md`: upstream changes mapped onto the skill files that cite
                 them, gate results, probe deltas and the actions left for a maintainer or an agent.
-  7. Agent    — with --agent-cmd, hand the report to an agent CLI, then re-merge the coverage its new
-                prose cites, re-run the gates and re-derive the verdict, so the exit code describes
-                the tree the agent left behind rather than the one it started from.
+  7. Agent    — with --agent-cmd, hand the report and the prompt kit in `prompts/skill-sync/` to an
+                agent CLI, then re-merge the coverage its new prose cites, re-run the gates and
+                re-derive the verdict, so the exit code describes the tree the agent left behind
+                rather than the one it started from.
 
 The prose in SKILL.md and references/ stays hand-written: its `[verified: run]` markers are claims
 about executed crawls, which no unattended job can assert. This tool regenerates everything that is
@@ -45,6 +46,7 @@ PROJECT = Path(__file__).resolve().parent.parent
 DOCS = PROJECT / "docs" / "crawl4ai"
 SKILL = PROJECT / ".agents" / "skills" / "crawl4ai"
 REPORT = PROJECT / "reports" / "skill-sync.md"
+PROMPT_KIT = PROJECT / "prompts" / "skill-sync"  # stages handed to the agent CLI, entry point 00-overview.md
 MANIFEST = "_manifest.json"
 CANDIDATE_MODULES = (
     "crawl4ai",
@@ -78,6 +80,23 @@ def split_command(text: str) -> list[str]:
     """Split an agent command line; POSIX shlex would mangle Windows separators in paths."""
     tokens = shlex.split(text, posix=sys.platform != "win32")
     return [t[1:-1] if len(t) > 1 and t[0] == t[-1] and t[0] in "\"'" else t for t in tokens]
+
+
+def agent_prompt(report: Path, docs_dir: Path, skill_dir: Path, check_api: Path) -> str:
+    """The message handed to the agent CLI: this project's prompt kit when it ships one.
+
+    The kit keeps the instructions under version control and out of this script's source, and an
+    agent CLI reads them as ordinary files in the working copy it was started in.
+    """
+    overview = PROMPT_KIT / "00-overview.md"
+    if overview.is_file():
+        return (f"Skill sync report at {report}. Read {overview} and work its stages in order against "
+                f"{skill_dir}; the upstream docs mirror is {docs_dir} and the installed crawl4ai package is "
+                f"importable. Finish by running python {check_api} and reporting the actions that remain.")
+    return (f"Skill sync report at {report}. Read it, then update the crawl4ai skill under {skill_dir} to "
+            f"follow it: regenerate the affected references from the upstream docs in {docs_dir} and from "
+            f"the installed crawl4ai package, keep the evidence markers honest, and finish by running "
+            f"python {check_api}.")
 
 
 def load_manifest(path: Path) -> dict[str, dict]:
@@ -580,10 +599,7 @@ def main() -> int:
         report_path.write_text(build_report(state), encoding="utf-8")
 
     if args.agent_cmd:
-        prompt = (f"Skill sync report at {report_path}. Read it, then update the crawl4ai skill under "
-                  f"{skill_dir} to follow it: regenerate the affected references from the upstream docs in "
-                  f"{docs_dir} and from the installed crawl4ai package, keep the evidence markers honest, and "
-                  f"finish by running python {check_api_path}.")
+        prompt = agent_prompt(report_path, docs_dir, skill_dir, check_api_path)
         code, out = run([*split_command(args.agent_cmd), prompt], cwd=PROJECT)
         print(f"[agent] exit {code}", file=sys.stderr)
         if out:

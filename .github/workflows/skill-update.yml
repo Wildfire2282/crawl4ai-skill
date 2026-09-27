@@ -1,9 +1,9 @@
 name: skill-update
 
-# Refresh the upstream docs mirror, re-derive the skill from it, and open a pull request with the
-# result. Anything the deterministic stages cannot prove (prose, evidence markers) is listed as an
-# action in reports/skill-sync.md; set the repository variable SKILL_AGENT_CMD to have an agent CLI
-# attempt those actions before the pull request is opened.
+# Refresh the upstream docs mirror, re-derive the skill from it, run the agent pass over the prose and
+# open a pull request with the result. The deterministic stages are documented in
+# scripts/update_skill.py; the agent pass follows the prompt kit in prompts/skill-sync/ and is
+# re-verified afterwards, so the run goes green only when the report lists no actions.
 
 on:
   schedule:
@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       agent_cmd:
-        description: "Agent CLI prefix for the prose pass (empty = deterministic stages only)"
+        description: "Agent CLI prefix for the prose pass ('-' = deterministic stages only, empty = the workflow default)"
         required: false
         default: ""
 
@@ -27,12 +27,17 @@ jobs:
   update:
     runs-on: ubuntu-latest
     env:
-      AGENT_CMD: ${{ inputs.agent_cmd || vars.SKILL_AGENT_CMD }}
+      # Default: opencode with a Zen free model, which needs no credentials today. Override with the
+      # repository variable SKILL_AGENT_CMD — any agent CLI whose non-interactive prefix is stable.
+      AGENT_CMD: ${{ inputs.agent_cmd || vars.SKILL_AGENT_CMD || 'opencode run --model opencode/big-pickle' }}
       BRANCH: skill-sync/upstream-docs
     steps:
+      # No persisted credential: the agent runs with broad tool permissions in this checkout, so it
+      # must not hold a push token. The pull-request step supplies its own token below.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: actions/setup-python@v5
         with:
@@ -44,6 +49,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           crawl4ai-setup
+
+      - name: Install the agent CLI
+        continue-on-error: true  # a CLI that will not install must not stop the deterministic stages
+        run: |
+          npm install -g opencode-ai@1.18.32   # pinned: run-mode flags and permission defaults move between releases
+          opencode --version
 
       - name: Refresh the upstream docs mirror
         run: |
@@ -57,9 +68,14 @@ jobs:
         id: sync
         continue-on-error: true
         run: |
-          if [ -n "$AGENT_CMD" ]; then
+          if [ "$AGENT_CMD" = "-" ]; then AGENT_CMD=""; fi
+          AGENT_BIN="${AGENT_CMD%% *}"
+          if [ -n "$AGENT_CMD" ] && command -v "$AGENT_BIN" >/dev/null 2>&1; then
             python scripts/update_skill.py --probe --agent-cmd "$AGENT_CMD"
           else
+            if [ -n "$AGENT_CMD" ]; then
+              echo "::warning::agent CLI '$AGENT_BIN' is not installed; deterministic stages only"
+            fi
             python scripts/update_skill.py --probe
           fi
 
@@ -77,6 +93,7 @@ jobs:
           git checkout -B "$BRANCH"
           git add -A
           git commit -m "chore(skill): sync crawl4ai skill with the upstream docs snapshot"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git fetch origin "$BRANCH" || true   # refresh the lease so the rolling branch can be updated
           git push --force-with-lease -u origin "$BRANCH"
           if gh pr view "$BRANCH" --json number >/dev/null 2>&1; then
