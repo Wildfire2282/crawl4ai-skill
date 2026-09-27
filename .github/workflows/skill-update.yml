@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "auto = probe and sync incrementally; full = refetch every page; agent = also run the prose pass when the report lists no action; deterministic = skip the agent pass"
+        description: "auto = probe and sync incrementally (a quiet tree ends the run); full = refetch every page; agent = also force the prose pass; deterministic = skip the agent pass. full and agent always run the pipeline"
         type: choice
         options:
           - auto
@@ -66,11 +66,17 @@ jobs:
           code=0
           python scripts/sync_docs_repo.py --check --json > probe.json || code=$?
           cat probe.json
-          case "$code" in
-            0) echo "needed=false" >> "$GITHUB_OUTPUT" ;;
-            3) echo "needed=true" >> "$GITHUB_OUTPUT" ;;
-            *) echo "::error::the upstream probe failed"; exit "$code" ;;
-          esac
+          # `auto` and `deterministic` stop here on a quiet tree; `full` and `agent` are an explicit
+          # request to run the pipeline, so the probe result cannot skip them.
+          needed="true"
+          if [ "$MODE" = "auto" ] || [ "$MODE" = "deterministic" ]; then
+            case "$code" in
+              0) needed="false" ;;
+              3) needed="true" ;;
+              *) echo "::error::the upstream probe failed"; exit "$code" ;;
+            esac
+          fi
+          echo "needed=$needed" >> "$GITHUB_OUTPUT"
 
       - name: Report a quiet tree
         if: steps.probe.outputs.needed == 'false'

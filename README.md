@@ -128,6 +128,10 @@ Prerequisites for the update workflow:
   `main` protected against bot pushes, point the run at an unprotected branch or allow
   `github-actions[bot]` to push. There is no pull request to review any more — the run merges itself
   by pushing, and only after every gate is green.
+- Manual runs take a `mode`: `auto` (probe, then sync when there is work — a quiet tree ends the run
+  after one request), `full` (refetch every carried page), `agent` (also force the prose pass on a quiet
+  tree) and `deterministic` (never start the agent). `full` and `agent` always run the pipeline; the
+  probe result cannot skip them.
 - Repository variable `SKILL_AGENT_CMD` (optional) replaces the whole agent command, `{model}`
   placeholder included; `opencode run --standalone --auto --model opencode/muse-spark-1.3-contributor-free`
   is the shape to copy. Name a paid model there and add its key to the update step's `env:` as a
