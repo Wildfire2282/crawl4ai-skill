@@ -1,0 +1,25 @@
+{
+  "skill_name": "crawl4ai",
+  "purpose": "Trigger evaluation per the Agent Skills optimizing-descriptions guide. Run each query three times, compute a trigger rate, and split results by the 'split' field (train guides edits, validation checks generalisation).",
+  "limit": 1024,
+  "queries": [
+    { "id": 1, "split": "train", "should_trigger": true, "query": "I need every product listing from this shop page saved as JSON — name, price, stock" },
+    { "id": 2, "split": "train", "should_trigger": true, "query": "the pricing page renders its table with JS and my requests.get returns an empty div, how do I get the actual numbers" },
+    { "id": 3, "split": "train", "should_trigger": true, "query": "write me a script that walks our docs site (about 400 pages) and dumps each page to markdown" },
+    { "id": 4, "split": "train", "should_trigger": true, "query": "AsyncWebCrawler keeps returning success=True with nothing in result.markdown, what am I doing wrong" },
+    { "id": 5, "split": "train", "should_trigger": true, "query": "crawl our competitor's blog nightly and tell me when a new post appears" },
+    { "id": 6, "split": "train", "should_trigger": true, "query": "harvest the article bodies behind a login on our intranet and store them in postgres" },
+    { "id": 7, "split": "validation", "should_trigger": true, "query": "scrape the tables off this PDF and this HTML page into one CSV" },
+    { "id": 8, "split": "validation", "should_trigger": true, "query": "best way to pull 5000 urls from a sitemap and get the main text of each without hammering the server" },
+    { "id": 9, "split": "validation", "should_trigger": true, "query": "I'm getting 403s from a site that works in my browser — need to fetch it from python anyway" },
+    { "id": 10, "split": "validation", "should_trigger": true, "query": "need the LLM to read each page and return {company, funding, date} — some pages are messy HTML" },
+    { "id": 11, "split": "train", "should_trigger": false, "query": "fetch this JSON API with requests and parse the response into a dataframe" },
+    { "id": 12, "split": "train", "should_trigger": false, "query": "my CSS grid collapses on mobile, why is the sidebar overlapping the main column" },
+    { "id": 13, "split": "train", "should_trigger": false, "query": "set up playwright tests for our checkout flow and wire them into CI" },
+    { "id": 14, "split": "train", "should_trigger": false, "query": "write a pandas pipeline that dedupes our customer CSV and emails a summary every morning" },
+    { "id": 15, "split": "validation", "should_trigger": false, "query": "what's the difference between requests and httpx for async calls" },
+    { "id": 16, "split": "validation", "should_trigger": false, "query": "extract the text layer from this scanned PDF with OCR" },
+    { "id": 17, "split": "validation", "should_trigger": false, "query": "build a FastAPI endpoint that proxies a third-party REST API and caches it in redis" },
+    { "id": 18, "split": "validation", "should_trigger": false, "query": "why does selenium time out waiting for an element that clearly exists" }
+  ]
+}

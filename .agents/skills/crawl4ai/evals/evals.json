@@ -1,0 +1,37 @@
+{
+  "skill_name": "crawl4ai",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "can you pull the text off https://example.com and also off https://docs.crawl4ai.com/core/quickstart/ — save both as markdown files under out/ please, I want to grep them later",
+      "expected_output": "Two markdown files under out/, one per URL, each holding the page's content text. The example.com file contains the heading 'Example Domain'. Neither file contains site navigation chrome.",
+      "assertions": [
+        "Two .md files exist under out/ (one per requested URL)",
+        "Each .md file is longer than 120 characters (a silent empty extraction yields 1)",
+        "The example.com output contains the string 'Example Domain'",
+        "All .md files under out/ are free of the string 'Brand Book' (site navigation chrome); fails if no files were produced"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "grab me the front page entries (title + link) from https://news.ycombinator.com as JSON — need at least 20 of them, write it to out/items.json",
+      "expected_output": "out/items.json containing a JSON array of at least 20 objects, each with a non-empty title and an absolute url.",
+      "assertions": [
+        "out/items.json parses as a JSON array",
+        "The array holds at least 20 elements",
+        "Every element of the array has non-empty 'title' and 'url' keys",
+        "Every 'url' value in the array starts with 'http'"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "my crawl of https://example.com prints an empty string. it reports success=True and status_code=200 so the site is fine. the config is CrawlerRunConfig(cache_mode=CacheMode.BYPASS, css_selector='main'). what is wrong and what does the fixed call look like?",
+      "expected_output": "Diagnosis that css_selector='main' matches no element on the page, causing success=True with effectively empty Markdown. A corrected call that omits the selector (or targets an element that exists), verified to return the page content.",
+      "assertions": [
+        "The explanation names css_selector (or 'selector') as the cause of the empty output",
+        "The corrected call is shown or executed and its output contains 'Example Domain'",
+        "The final code either drops css_selector or uses a selector that exists in the target page"
+      ]
+    }
+  ]
+}

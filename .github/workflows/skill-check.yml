@@ -1,0 +1,38 @@
+name: skill-check
+
+# Offline gates. No browsers and no network: every step either introspects the installed package or
+# reads files, so a pull request gets an answer in seconds.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install the package under test
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: API drift gate
+        run: python -B .agents/skills/crawl4ai/scripts/check_api.py
+
+      - name: Style gate
+        run: python -B .style_check.py
+
+      - name: Skill matches the committed docs snapshot
+        run: python -B scripts/update_skill.py --check-only

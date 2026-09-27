@@ -1,0 +1,290 @@
+{
+  "advanced-adaptive-strategies.md": {
+    "url": "https://docs.crawl4ai.com/advanced/adaptive-strategies/",
+    "title": "Advanced Adaptive Strategies",
+    "sha256": "b2c8c8fe61a157e23dcf4ee32b1c7e8c181b90dc1608cb8aa48f0ca82368d412",
+    "bytes": 9941
+  },
+  "advanced-advanced-features.md": {
+    "url": "https://docs.crawl4ai.com/advanced/advanced-features/",
+    "title": "Overview of Some Important Advanced Features",
+    "sha256": "8fbfdd839b3d555b8f647fa3b1a89789c8d109f0779cdecee023619684ab20a3",
+    "bytes": 15395
+  },
+  "advanced-anti-bot-and-fallback.md": {
+    "url": "https://docs.crawl4ai.com/advanced/anti-bot-and-fallback/",
+    "title": "Anti-Bot Detection & Fallback",
+    "sha256": "e946f7f9d3d3b82e853489179ed46e085d3ca5b66e1e5bf27d6285ca6a9ff0b1",
+    "bytes": 10835
+  },
+  "advanced-file-downloading.md": {
+    "url": "https://docs.crawl4ai.com/advanced/file-downloading/",
+    "title": "Download Handling in Crawl4AI",
+    "sha256": "9c288b477f45535e299568388d8929d067f0709d1299af4ccb3ef1d195eb20c9",
+    "bytes": 4606
+  },
+  "advanced-hooks-auth.md": {
+    "url": "https://docs.crawl4ai.com/advanced/hooks-auth/",
+    "title": "Hooks & Auth in AsyncWebCrawler",
+    "sha256": "a96fcbffeb21845003059aae7ddeeb014ab58acc8c3394cef0e2ccc8ee049bf9",
+    "bytes": 10379
+  },
+  "advanced-identity-based-crawling.md": {
+    "url": "https://docs.crawl4ai.com/advanced/identity-based-crawling/",
+    "title": "Preserve Your Identity with Crawl4AI",
+    "sha256": "b1e9315d4c9a95b4b707d3395caf1827eb45ebf52eb3861495cac4da4d813c92",
+    "bytes": 16229
+  },
+  "advanced-lazy-loading.md": {
+    "url": "https://docs.crawl4ai.com/advanced/lazy-loading/",
+    "title": "https://docs.crawl4ai.com/advanced/lazy-loading/",
+    "sha256": "fbfd2bc7d36b2321c0a5368062a3ff413c7dacd54f1a0bd6d9d0c79180923584",
+    "bytes": 4872
+  },
+  "advanced-multi-url-crawling.md": {
+    "url": "https://docs.crawl4ai.com/advanced/multi-url-crawling/",
+    "title": "Advanced Multi-URL Crawling with Dispatchers",
+    "sha256": "c9abd0a23dc9e632b8e642a4d2e48a5336846f12d903d3562a2f07bdaa33056b",
+    "bytes": 20966
+  },
+  "advanced-network-console-capture.md": {
+    "url": "https://docs.crawl4ai.com/advanced/network-console-capture/",
+    "title": "Network Requests & Console Message Capturing",
+    "sha256": "588585a61aa8b44da51b1628a456b78632fe6314fc2e3908e7c5a0ab2bc6b747",
+    "bytes": 7325
+  },
+  "advanced-pdf-parsing.md": {
+    "url": "https://docs.crawl4ai.com/advanced/pdf-parsing/",
+    "title": "PDF Processing Strategies",
+    "sha256": "523f6bb12bcd1272bdc10e93820fef47547ed68acf2852d5f923ac7863c0bcff",
+    "bytes": 13946
+  },
+  "advanced-proxy-security.md": {
+    "url": "https://docs.crawl4ai.com/advanced/proxy-security/",
+    "title": "Proxy & Security",
+    "sha256": "493b33e4f6e00a9af67881d7bd637b73eef1d4af32bf11e14a431985224887dd",
+    "bytes": 10578
+  },
+  "advanced-session-management.md": {
+    "url": "https://docs.crawl4ai.com/advanced/session-management/",
+    "title": "Session Management",
+    "sha256": "82cb7f34218fe5629ddd17a4f46125106e6506d522b44cb43d6cd8db3b532828",
+    "bytes": 9641
+  },
+  "advanced-ssl-certificate.md": {
+    "url": "https://docs.crawl4ai.com/advanced/ssl-certificate/",
+    "title": "`SSLCertificate` Reference",
+    "sha256": "164843fe92d9bb221de59375b987f98339540906e2d94c928fc295e46e35f1ff",
+    "bytes": 6225
+  },
+  "advanced-undetected-browser.md": {
+    "url": "https://docs.crawl4ai.com/advanced/undetected-browser/",
+    "title": "Undetected Browser Mode",
+    "sha256": "a2b94dca6c99864397718cf890aa4668172dc059b58f0bb351834e0c2ea870e4",
+    "bytes": 12526
+  },
+  "advanced-virtual-scroll.md": {
+    "url": "https://docs.crawl4ai.com/advanced/virtual-scroll/",
+    "title": "Virtual Scroll",
+    "sha256": "aa399731aa9c172f5bdb59f7d880cca45e0c9fd585208a74d6f52a164580765b",
+    "bytes": 10489
+  },
+  "api-adaptive-crawler.md": {
+    "url": "https://docs.crawl4ai.com/api/adaptive-crawler/",
+    "title": "AdaptiveCrawler",
+    "sha256": "608426e4961a64d84376ab39511d9294e07977f3fd38b01324871eeefa4ecea0",
+    "bytes": 5936
+  },
+  "api-arun.md": {
+    "url": "https://docs.crawl4ai.com/api/arun/",
+    "title": "`arun()` Parameter Guide (New Approach)",
+    "sha256": "f51348862089f2dd7e981b13f3ed0f36026841331a92665eebec2c98fb6a6d32",
+    "bytes": 9583
+  },
+  "api-arun_many.md": {
+    "url": "https://docs.crawl4ai.com/api/arun_many/",
+    "title": "`arun_many(...)` Reference",
+    "sha256": "c226ab0fe5600fcd96d51cfbe43192126bc01bd1c0630edce45b34c13c64b1ab",
+    "bytes": 7938
+  },
+  "api-async-webcrawler.md": {
+    "url": "https://docs.crawl4ai.com/api/async-webcrawler/",
+    "title": "AsyncWebCrawler",
+    "sha256": "7e202a31c2f174ab025d5569f17271c1b27456437e6c877b376b227f296600e5",
+    "bytes": 9742
+  },
+  "api-c4a-script-reference.md": {
+    "url": "https://docs.crawl4ai.com/api/c4a-script-reference/",
+    "title": "C4A-Script API Reference",
+    "sha256": "e1052db2e659264f77ded2fead3795d2185bd1ad4eb6dca97c61834e0e18e007",
+    "bytes": 19245
+  },
+  "api-crawl-result.md": {
+    "url": "https://docs.crawl4ai.com/api/crawl-result/",
+    "title": "`CrawlResult` Reference",
+    "sha256": "56a93cea2e0fc38ffd0faf4de177fc9b55cd1262e8d385bebc3ded189b161608",
+    "bytes": 16910
+  },
+  "api-digest.md": {
+    "url": "https://docs.crawl4ai.com/api/digest/",
+    "title": "digest()",
+    "sha256": "b5fec78ccf878cf678d307aad843e5e86416c0ba0422554bf68f5005f2fc92e0",
+    "bytes": 5793
+  },
+  "api-parameters.md": {
+    "url": "https://docs.crawl4ai.com/api/parameters/",
+    "title": "1. **BrowserConfig** \u2013 Controlling the Browser",
+    "sha256": "facf461524a2d9ec3648e2506f356adbbecbb5d3f6fbc883984f1baadc553e18",
+    "bytes": 34696
+  },
+  "api-strategies.md": {
+    "url": "https://docs.crawl4ai.com/api/strategies/",
+    "title": "Extraction & Chunking Strategies API",
+    "sha256": "b0af7640b42a2663d8584fadea5d571394da80a4093e1083638980331cc8368f",
+    "bytes": 12415
+  },
+  "core-adaptive-crawling.md": {
+    "url": "https://docs.crawl4ai.com/core/adaptive-crawling/",
+    "title": "Adaptive Web Crawling",
+    "sha256": "b61d79ad2f698a08a443e130913855a93d736331ab2f86e5b35fa971c7fa1a04",
+    "bytes": 12665
+  },
+  "core-browser-crawler-config.md": {
+    "url": "https://docs.crawl4ai.com/core/browser-crawler-config/",
+    "title": "Browser, Crawler & LLM Configuration (Quick Overview)",
+    "sha256": "aa12234aeb31e6105672c9abecbf60a2ced8d301c413d118d0f704c0730bf1b7",
+    "bytes": 20232
+  },
+  "core-c4a-script.md": {
+    "url": "https://docs.crawl4ai.com/core/c4a-script/",
+    "title": "C4A-Script: Visual Web Automation Made Simple",
+    "sha256": "0eb9850287d714c25367199267a92100475c301fb99cf0c7b59ddbc15203d2a2",
+    "bytes": 11453
+  },
+  "core-cache-modes.md": {
+    "url": "https://docs.crawl4ai.com/core/cache-modes/",
+    "title": "Crawl4AI Cache System and Migration Guide",
+    "sha256": "cec7eb430b00b1595edb2a58a4a6f80d5d37222cfe66660b696eed11d7d1d59f",
+    "bytes": 2420
+  },
+  "core-cli.md": {
+    "url": "https://docs.crawl4ai.com/core/cli/",
+    "title": "Crawl4AI CLI Guide",
+    "sha256": "8f914c419148748f53228304ea1e6ecffec7999d6d2238ca954eb0d209c927b0",
+    "bytes": 7791
+  },
+  "core-content-selection.md": {
+    "url": "https://docs.crawl4ai.com/core/content-selection/",
+    "title": "Content Selection",
+    "sha256": "2ddca1b711ea609b04faf8d8321e836173b4253cb304629f2e224bdc3c8bc0ff",
+    "bytes": 19999
+  },
+  "core-crawler-result.md": {
+    "url": "https://docs.crawl4ai.com/core/crawler-result/",
+    "title": "Crawl Result and Output",
+    "sha256": "cd771cd1b04cdc3fd45576c99799e42cdcecd1e41c087bd8e9c80a792d20db19",
+    "bytes": 14815
+  },
+  "core-deep-crawling.md": {
+    "url": "https://docs.crawl4ai.com/core/deep-crawling/",
+    "title": "Deep Crawling",
+    "sha256": "6fd7e32184ea0e4d7a6aa7f5605940cb56630428912b0aae302e74b872bea56e",
+    "bytes": 30395
+  },
+  "core-domain-mapping.md": {
+    "url": "https://docs.crawl4ai.com/core/domain-mapping/",
+    "title": "Domain Mapping: Discover Every URL Under a Domain",
+    "sha256": "d5a369be7be1cc9471a7139461b08735f3f89d224cca08e365a45dc84219cb9d",
+    "bytes": 12934
+  },
+  "core-examples.md": {
+    "url": "https://docs.crawl4ai.com/core/examples/",
+    "title": "Code Examples",
+    "sha256": "91000167bd72b43dba8a6e1ff23db640cab74aa8dfb2bd81bac2ac184617f7d4",
+    "bytes": 13227
+  },
+  "core-fit-markdown.md": {
+    "url": "https://docs.crawl4ai.com/core/fit-markdown/",
+    "title": "Fit Markdown with Pruning & BM25",
+    "sha256": "238cdc24e02c48d5e41eedc47139a6ecbc26151f0017c8fd6ee2947bbeedbf69",
+    "bytes": 10144
+  },
+  "core-installation.md": {
+    "url": "https://docs.crawl4ai.com/core/installation/",
+    "title": "Installation & Setup (2023 Edition)",
+    "sha256": "d3adec0dc1344fdf61747dacda37b46b0aa21dac93078e2cff7f2ff43c6fa5e1",
+    "bytes": 5048
+  },
+  "core-link-media.md": {
+    "url": "https://docs.crawl4ai.com/core/link-media/",
+    "title": "Link & Media",
+    "sha256": "aa3948bc6cb636f4713c4cc25293ae9d923e7951c97e55a7dbb4f547a4d0269c",
+    "bytes": 26936
+  },
+  "core-local-files.md": {
+    "url": "https://docs.crawl4ai.com/core/local-files/",
+    "title": "Prefix-Based Input Handling in Crawl4AI",
+    "sha256": "5756d58642d09f24e231651c7d84a2183a1bf1c1ad353e1fb5816fc8561f2df3",
+    "bytes": 5870
+  },
+  "core-markdown-generation.md": {
+    "url": "https://docs.crawl4ai.com/core/markdown-generation/",
+    "title": "Markdown Generation Basics",
+    "sha256": "0467a086dcd930d4c3ce72ecdb4bef3c02496923516e2da672096b85bbafed2b",
+    "bytes": 23229
+  },
+  "core-page-interaction.md": {
+    "url": "https://docs.crawl4ai.com/core/page-interaction/",
+    "title": "Page Interaction",
+    "sha256": "9b01ed641b3679351487c4af53a162c238f688ca951611658a64c69c0012ea92",
+    "bytes": 16211
+  },
+  "core-quickstart.md": {
+    "url": "https://docs.crawl4ai.com/core/quickstart/",
+    "title": "Getting Started with Crawl4AI",
+    "sha256": "227baf701f52e547179a95931ae5739f3036ca982d28118b00d3e02959125ee5",
+    "bytes": 17668
+  },
+  "core-simple-crawling.md": {
+    "url": "https://docs.crawl4ai.com/core/simple-crawling/",
+    "title": "Simple Crawling",
+    "sha256": "f6c78273b30bc4ce7d81c98f0bca8db01f8573a34567a101d9c57697021964d9",
+    "bytes": 4641
+  },
+  "core-table_extraction.md": {
+    "url": "https://docs.crawl4ai.com/core/table_extraction/",
+    "title": "Table Extraction Strategies",
+    "sha256": "ea93ef123b4557011f00c1193b1fdbd7e3212593d0a6f691500fc72a498b3f5e",
+    "bytes": 27595
+  },
+  "core-url-seeding.md": {
+    "url": "https://docs.crawl4ai.com/core/url-seeding/",
+    "title": "URL Seeding: The Smart Way to Crawl at Scale",
+    "sha256": "5b2fd5c39f1f69fea0a8d2e54cea95b7f40aeb7a7ec3b3b959f4e382547aab89",
+    "bytes": 37581
+  },
+  "extraction-chunking.md": {
+    "url": "https://docs.crawl4ai.com/extraction/chunking/",
+    "title": "Chunking Strategies",
+    "sha256": "6baa28b67063a71bdf237473978ac9951522508f16215f39e27653e644a9e0c0",
+    "bytes": 5067
+  },
+  "extraction-clustring-strategies.md": {
+    "url": "https://docs.crawl4ai.com/extraction/clustring-strategies/",
+    "title": "Cosine Strategy",
+    "sha256": "587711e144e3fc1a7ae361acfa39a1c0236f905f22bbe17510f185ec1629f9b0",
+    "bytes": 6555
+  },
+  "extraction-llm-strategies.md": {
+    "url": "https://docs.crawl4ai.com/extraction/llm-strategies/",
+    "title": "Extracting JSON (LLM)",
+    "sha256": "592b60671bbc6146133e71f61d180374d405f60053b8167ced97a987d9ddadbf",
+    "bytes": 15567
+  },
+  "extraction-no-llm-strategies.md": {
+    "url": "https://docs.crawl4ai.com/extraction/no-llm-strategies/",
+    "title": "Extracting JSON (No LLM)",
+    "sha256": "2fcd679fc324c82569c3c8b8fe64548672ab2f5eff0aabee0265b51bfc31606d",
+    "bytes": 35972
+  }
+}

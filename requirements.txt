@@ -1,0 +1,5 @@
+# Runtime dependencies of the skill pipeline and of the gates.
+# The scheduled workflow installs this before running scripts/mirror_docs_site.py and
+# scripts/update_skill.py; nothing here is needed to *use* the skill in another project.
+crawl4ai>=0.9,<1
+httpx>=0.27

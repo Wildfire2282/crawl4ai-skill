@@ -1,0 +1,93 @@
+name: skill-update
+
+# Refresh the upstream docs mirror, re-derive the skill from it, and open a pull request with the
+# result. Anything the deterministic stages cannot prove (prose, evidence markers) is listed as an
+# action in reports/skill-sync.md; set the repository variable SKILL_AGENT_CMD to have an agent CLI
+# attempt those actions before the pull request is opened.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      agent_cmd:
+        description: "Agent CLI prefix for the prose pass (empty = deterministic stages only)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: skill-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      AGENT_CMD: ${{ inputs.agent_cmd || vars.SKILL_AGENT_CMD }}
+      BRANCH: skill-sync/upstream-docs
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install crawl4ai and its browsers
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          crawl4ai-setup
+
+      - name: Refresh the upstream docs mirror
+        run: |
+          python scripts/mirror_docs_site.py \
+            --root https://docs.crawl4ai.com \
+            --out docs/crawl4ai \
+            --concurrency 6 \
+            --json
+
+      - name: Update the skill
+        id: sync
+        continue-on-error: true
+        run: |
+          if [ -n "$AGENT_CMD" ]; then
+            python scripts/update_skill.py --probe --agent-cmd "$AGENT_CMD"
+          else
+            python scripts/update_skill.py --probe
+          fi
+
+      - name: Open or update the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "no changes: the skill matches the docs snapshot and the installed package"
+            exit 0
+          fi
+          git config user.name "skill-sync[bot]"
+          git config user.email "skill-sync[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add -A
+          git commit -m "chore(skill): sync crawl4ai skill with the upstream docs snapshot"
+          git fetch origin "$BRANCH" || true   # refresh the lease so the rolling branch can be updated
+          git push --force-with-lease -u origin "$BRANCH"
+          if gh pr view "$BRANCH" --json number >/dev/null 2>&1; then
+            gh pr edit "$BRANCH" --title "chore(skill): sync with upstream docs" --body-file reports/skill-sync.md
+          else
+            gh pr create --base "$GITHUB_REF_NAME" --head "$BRANCH" \
+              --title "chore(skill): sync with upstream docs" --body-file reports/skill-sync.md
+          fi
+
+      - name: Fail when the report still lists actions
+        if: steps.sync.outcome == 'failure'
+        run: |
+          echo "::warning::the sync left actions for a maintainer or an agent; see reports/skill-sync.md"
+          exit 1
