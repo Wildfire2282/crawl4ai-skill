@@ -2,7 +2,8 @@
 """Grade the mechanical assertions in `evals.json` against a directory of produced output.
 
 Purpose: check that the output-eval assertions discriminate — they pass on a real run and fail
-on empty or malformed output. Offline and mechanical: no crawling, no model calls.
+on empty or malformed output. Offline and mechanical: no crawling, no model calls. A case whose
+assertions are answered by reading the answer rather than the files is reported as ungraded.
 
 Usage:
     python evals/grade.py <output-dir>            # text report
@@ -90,7 +91,8 @@ def main() -> int:
     if (root / "out").is_dir():
         root = root / "out"
 
-    assertions = {case["id"]: case["assertions"] for case in json.loads(EVALS_PATH.read_text(encoding="utf-8"))["evals"]}
+    cases = json.loads(EVALS_PATH.read_text(encoding="utf-8"))["evals"]
+    assertions = {case["id"]: case["assertions"] for case in cases}
     rows = []
     for eval_id, index, passed, evidence in grade(root):
         try:
@@ -101,15 +103,24 @@ def main() -> int:
             return 2
         rows.append({"eval": eval_id, "assertion": index + 1, "text": text, "passed": passed, "evidence": evidence})
 
+    # A case whose assertions cannot be answered from files (an explanation, a corrected call) is
+    # graded by reading the answer, not here: it is reported so a spec that grew a case the grader
+    # cannot see is visible, while the pass rate stays the mechanical one.
+    graded = {row["eval"] for row in rows}
+    ungraded = [{"eval": case["id"], "assertions": len(case["assertions"])}
+                for case in cases if case["id"] not in graded]
     failures = [r for r in rows if not r["passed"]]
     if args.json:
         print(json.dumps({"root": str(root), "results": rows, "passed": len(rows) - len(failures),
-                          "total": len(rows)}, indent=2))
+                          "total": len(rows), "ungraded": ungraded}, indent=2))
     else:
         print(f"root={root}")
         for r in rows:
             print(f"  {'PASS' if r['passed'] else 'FAIL'}  {r['eval']}.{r['assertion']} {r['text']}")
             print(f"        evidence: {r['evidence']}")
+        if ungraded:
+            print("not graded here (no file-level assertion): "
+                  + ", ".join(f"eval {c['eval']} ({c['assertions']} assertion(s))" for c in ungraded))
         print(f"pass rate: {len(rows) - len(failures)}/{len(rows)}")
     return 1 if failures else 0
 

@@ -7,7 +7,7 @@ Purpose: measure this skill's activation and output quality. Not loaded during c
 | `evals.json` | Output test cases: prompt, expected output, mechanical assertions |
 | `trigger_queries.json` | Trigger queries with `should_trigger` labels and a train/validation split |
 | `run_trigger.py` | Runs the trigger set against an agent CLI and applies the trigger-rate threshold |
-| `grade.py` | Grades the `evals.json` assertions against a directory of produced output |
+| `grade.py` | Grades the file-level `evals.json` assertions against a directory of produced output; cases without one are listed as ungraded |
 
 ## Trigger evaluation
 
@@ -39,4 +39,4 @@ python evals/grade.py <run-dir>/with_skill --json     # machine-readable report
 
 Exit 0 = every assertion passed, 1 = at least one failed, 2 = invalid input. The grader resolves `evals.json` beside itself, so it runs from any working directory.
 
-Assertions are file-level and mechanical (file exists, size bound, string present, JSON parses, element count, field shape). They were calibrated on three run directories — real output (`8/8`), empty output (`0/8`) and malformed output (`2/8`, the two that only require files to exist) — so they discriminate rather than pass unconditionally. The calibration runs are kept at the repository level under `.evalcheck/run/`.
+The file-level assertions are mechanical (file exists, size bound, string present, JSON parses, element count, field shape) and the grader covers the cases that carry them. A case answered by reading the output itself — the diagnosis and the corrected call of eval 3 — carries no file-level assertion, and the grader lists it as ungraded instead of counting it in the pass rate. The mechanical assertions were calibrated on three run directories — real output (`8/8`), empty output (`0/8`) and malformed output (`2/8`, the two that only require files to exist) — so they discriminate rather than pass unconditionally. The calibration runs are kept at the repository level under `.evalcheck/run/`.
