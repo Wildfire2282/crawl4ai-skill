@@ -131,6 +131,15 @@ jobs:
           fi
           python scripts/update_skill.py "${args[@]}"
 
+      - name: Verify before pushing
+        # A push made with GITHUB_TOKEN does not trigger skill-check (GitHub suppresses workflow runs
+        # for its own token), so the checks that gate a pull request run here too, before the commit.
+        if: steps.probe.outputs.needed == 'true' && steps.sync.outcome == 'success'
+        run: |
+          set -euo pipefail
+          python -m skills_ref.cli validate .agents/skills/crawl4ai
+          python -B scripts/sync_docs_repo.py --verify
+
       - name: Commit and push
         if: steps.probe.outputs.needed == 'true' && steps.sync.outcome == 'success'
         run: |

@@ -39,7 +39,7 @@ API request and nothing else:
 | fetch | `sync_docs_repo.py` — downloads only the pages whose blob id moved | skipped |
 | update | `update_skill.py` — stamps, coverage, gates, probes, report | skipped |
 | agent | only when the report lists an action; models from `scripts/agent-models.json`, tried in order, each attempt starting from the same restored tree | skipped |
-| push | commits what the pipeline owns and pushes to the branch the run was triggered on — only when the verdict is green | skipped |
+| push | the same checks a pull request gets (`skills-ref validate`, `sync_docs_repo.py --verify`) run first — a `GITHUB_TOKEN` push does not trigger `skill-check` — then the run commits what the pipeline owns and pushes to the branch the run was triggered on, only when the verdict is green | skipped |
 
 A red verdict (drift, a failed gate, an action no model closed) pushes nothing and fails the run,
 with `reports/skill-sync.md` uploaded as an artifact. The next scheduled run starts from the same

@@ -37,11 +37,9 @@ jobs:
 
       - name: Agent Skills specification
         # The reference validator for the published spec: front matter, name, directory match,
-        # description length. Pinned, and it is the spec's own tool — pip installs the console
-        # script as `agentskills`; `python -m skills_ref.cli` is the version-independent form.
-        run: |
-          pip install skills-ref==0.1.1
-          python -m skills_ref.cli validate .agents/skills/crawl4ai
+        # description length. Pinned in requirements.txt; pip installs its console script as
+        # `agentskills`, and `python -m skills_ref.cli` is the version-independent form.
+        run: python -m skills_ref.cli validate .agents/skills/crawl4ai
 
       - name: Mirror, manifest and skill stamps agree
         run: python -B scripts/sync_docs_repo.py --verify
