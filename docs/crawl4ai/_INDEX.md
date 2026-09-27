@@ -1,8 +1,8 @@
 # Documentation mirror — docs.crawl4ai.com
 
 Standalone mirror of <https://docs.crawl4ai.com>, taken 2026-09-27 by `scripts/mirror_docs_site.py` (project tool; independent of any agent skill).
-48 pages; page bodies are verbatim Markdown from the live site.
-Non-core and superseded pages are curated out by `CURATED_OUT` in `scripts/mirror_docs_site.py` (offline reindex, mirror already matches the policy).
+48/48 pages downloaded; page bodies are verbatim Markdown from the live site.
+Non-core and superseded pages are curated out by `CURATED_OUT` in `scripts/mirror_docs_site.py` (41 upstream page(s) excluded by policy).
 Files are flat (`<section>-<page>.md`) so every reference stays one level deep.
 
 Refresh from the project root:
