@@ -81,7 +81,7 @@ style violation turns the gate red, the stamps stay as they were, and the report
 
 | Workflow | Trigger | Runs |
 | --- | --- | --- |
-| `.github/workflows/skill-update.yml` | weekly cron, manual | refresh the mirror, update the skill, push `skill-sync/upstream-docs`, open or edit a pull request, then fail the run if the report still lists actions |
+| `.github/workflows/skill-update.yml` | weekly cron, manual | refresh the mirror, update the skill, hand the report to the agent CLI when `SKILL_AGENT_CMD` is set, re-derive the verdict from the tree that agent left (gates, coverage, citations), push `skill-sync/upstream-docs`, open or edit a pull request, then fail the run if the report still lists actions |
 | `.github/workflows/skill-check.yml` | push to `main`, pull request | offline gates: API drift, style, and `update_skill.py --check-only` |
 
 Prerequisites for the update workflow:

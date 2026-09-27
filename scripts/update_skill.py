@@ -13,7 +13,9 @@ Stages, in order:
   5. Probes   — with --probe, re-observe the values the references quote (live crawl, network).
   6. Report   — `reports/skill-sync.md`: upstream changes mapped onto the skill files that cite
                 them, gate results, probe deltas and the actions left for a maintainer or an agent.
-  7. Agent    — with --agent-cmd, hand the report to an agent CLI and re-run the gates.
+  7. Agent    — with --agent-cmd, hand the report to an agent CLI, then re-merge the coverage its new
+                prose cites, re-run the gates and re-derive the verdict, so the exit code describes
+                the tree the agent left behind rather than the one it started from.
 
 The prose in SKILL.md and references/ stays hand-written: its `[verified: run]` markers are claims
 about executed crawls, which no unattended job can assert. This tool regenerates everything that is
@@ -326,6 +328,32 @@ def stamp_front_matter(text: str, values: dict[str, str]) -> tuple[str, list[str
     return head + body, changes
 
 
+def survey(docs_dir: Path, skill_dir: Path, baseline: Path | None) -> dict:
+    """Everything the verdict rests on, read fresh from disk.
+
+    Called once before the run and again after an agent pass. An agent rewrites prose and cites
+    upstream pages, so the diff, the citation census and the snapshot are only true as of the last
+    call — a verdict computed before the agent describes a tree that no longer exists.
+    """
+    manifest = load_manifest(docs_dir / MANIFEST)
+    previous, baseline_source = baseline_manifest(baseline, docs_dir)
+    diff = docs_diff(previous, manifest)
+    changed = diff["added"] + diff["changed"] + diff["removed"]
+    cited = {
+        name: cited_by(skill_dir, needles_for(name, (manifest.get(name) or (previous or {}).get(name, {})).get("url", "")))
+        for name in changed
+    }
+    leads = {}
+    for name in changed:
+        page = docs_dir / name
+        if page.is_file():
+            match = topic_match(page.read_text(encoding="utf-8", errors="replace"), skill_dir)
+            if match:
+                leads[name] = match
+    return {"manifest": manifest, "previous": previous or {}, "baseline_source": baseline_source,
+            "diff": diff, "cited": cited, "leads": leads, "snapshot": docs_snapshot(manifest)}
+
+
 def gate_results(project: Path, skill_dir: Path) -> list[tuple[str, int, str]]:
     """The gates a published skill has to pass: API drift and project style."""
     results = []
@@ -497,27 +525,15 @@ def main() -> int:
     write = not args.check_only
 
     try:
-        manifest = load_manifest(docs_dir / MANIFEST)
-        previous, baseline_source = baseline_manifest(Path(args.baseline) if args.baseline else None, docs_dir)
-        snapshot = docs_snapshot(manifest)
         version = current_version()
+        surveyed = survey(docs_dir, skill_dir, Path(args.baseline) if args.baseline else None)
     except Failure as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
-    diff = docs_diff(previous, manifest)
-    changed_names = diff["added"] + diff["changed"] + diff["removed"]
-    cited = {
-        name: cited_by(skill_dir, needles_for(name, (manifest.get(name) or previous.get(name, {})).get("url", "")))
-        for name in changed_names
-    }
-    leads = {}
-    for name in changed_names:
-        page = docs_dir / name
-        if page.is_file():
-            match = topic_match(page.read_text(encoding="utf-8", errors="replace"), skill_dir)
-            if match:
-                leads[name] = match
+    manifest, previous, snapshot = surveyed["manifest"], surveyed["previous"], surveyed["snapshot"]
+    diff, cited, leads = surveyed["diff"], surveyed["cited"], surveyed["leads"]
+    baseline_source = surveyed["baseline_source"]
 
     check_api_text = check_api_path.read_text(encoding="utf-8")
     _, coverage = sync_coverage(skill_dir, check_api_text, derived_coverage(skill_dir, coverage_names(check_api_text)), write)
@@ -573,22 +589,39 @@ def main() -> int:
         if out:
             print(out[-2000:], file=sys.stderr)
         if code == 0:
-            gates = gate_results(PROJECT, skill_dir)
-            state["gates"] = gates
+            # Re-derive the verdict from the tree the agent left behind: merge the names its new
+            # prose cites, re-run the gates, re-read the mirror, re-census the citations.
+            try:
+                state.update(survey(docs_dir, skill_dir, Path(args.baseline) if args.baseline else None))
+            except Failure as exc:
+                print(f"error: {exc}", file=sys.stderr)
+                return 2
+            api_text = check_api_path.read_text(encoding="utf-8")
+            _, after = sync_coverage(skill_dir, api_text,
+                                     derived_coverage(skill_dir, coverage_names(api_text)), write)
+            state["coverage"] = coverage + [item for item in after if item not in coverage]
+            state["pending_coverage"] = bool(state["coverage"]) and not write
+            state["gates"] = gate_results(PROJECT, skill_dir)
+            state["actions"] = actions_for(state)
+            state["ok"] = not state["actions"]
+            if write:
+                report_path.write_text(build_report(state), encoding="utf-8")
 
+    # The summary describes the state the verdict was taken on: after an agent pass that is the tree
+    # the agent left, not the one it started from.
     if args.json:
         print(json.dumps({
-            "version": version, "docs_pages": len(manifest), "snapshot": snapshot[:16],
-            "baseline": baseline_source, "diff": {k: len(v) for k, v in diff.items()},
-            "gates": {label: code for label, code, _ in gates}, "coverage_changes": len(coverage),
+            "version": version, "docs_pages": len(state["manifest"]), "snapshot": state["snapshot"][:16],
+            "baseline": state["baseline_source"], "diff": {k: len(v) for k, v in state["diff"].items()},
+            "gates": {label: code for label, code, _ in state["gates"]}, "coverage_changes": len(state["coverage"]),
             "actions": state["actions"], "report": str(report_path) if write else None,
         }, indent=2))
     else:
-        print(f"docs: {len(manifest)} pages, snapshot {snapshot[:12]}, baseline {baseline_source}")
-        print(f"docs diff: {', '.join(f'{k}={len(v)}' for k, v in diff.items())}")
-        for label, code, out in gates:
+        print(f"docs: {len(state['manifest'])} pages, snapshot {state['snapshot'][:12]}, baseline {state['baseline_source']}")
+        print(f"docs diff: {', '.join(f'{k}={len(v)}' for k, v in state['diff'].items())}")
+        for label, code, out in state["gates"]:
             print(f"gate {label}: exit {code}")
-        for change in coverage:
+        for change in state["coverage"]:
             print(f"coverage {change}")
         for claim, documented, observed in observed:
             print(f"probe {claim}: documented {documented}, observed {observed}")
