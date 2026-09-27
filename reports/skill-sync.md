@@ -2,13 +2,23 @@
 
 - generated: 2026-09-27
 - crawl4ai: 0.9.4 (skill expects 0.9.x: match)
-- docs mirror: 48 pages, snapshot `da1a2a66c390`
-- baseline: none (git has no committed manifest yet)
+- docs mirror: 48 pages, snapshot `d179c20858e8`
+- baseline: git HEAD:docs/crawl4ai/_manifest.json
 - result: in sync
 
 ## Upstream docs changes
 
-No committed baseline to diff against: this run only records the current snapshot.
+### added (0)
+
+None.
+
+### changed (0)
+
+None.
+
+### removed (0)
+
+None.
 
 ## Gates
 
@@ -17,13 +27,13 @@ No committed baseline to diff against: this run only records the current snapsho
   - checked: {'imports': 68, 'params': 103, 'methods': 16, 'result_fields': 29, 'rejected_params': 4, 'defaults': 104}
   - drift: none (all referenced APIs present)
 - .style_check.py: exit 0
+  - SKILL.md                     lines= 130
   - evals/README.md              lines=  42
   - evals/run_trigger.py         lines= 167
   - references/API.md            lines= 185
   - references/PATTERNS.md       lines= 266
   - references/TROUBLESHOOTING.md lines=  62
   - scripts/check_api.py         lines= 408
-  - SKILL.md                     lines= 130
   - issue count: 0
 
 ## Probes (live)
