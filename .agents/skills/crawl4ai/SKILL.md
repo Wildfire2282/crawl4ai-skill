@@ -9,7 +9,7 @@ metadata:
   verified: "2026-09-27"
   docs-snapshot: 083d26a852889812
   docs-pages: 48
-  docs-synced: 2026-09-28
+  docs-synced: 2026-09-27
   docs-commit: 1f68e5bd7c29f2067a1ef74f28dbf4dc20686a06
 ---
 

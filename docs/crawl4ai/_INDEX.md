@@ -1,6 +1,6 @@
 # Documentation mirror — unclecode/crawl4ai docs/md_v2
 
-Mirror of <https://github.com/unclecode/crawl4ai/tree/develop/docs/md_v2>, taken 2026-09-28 by `scripts/sync_docs_repo.py` (project tool; independent of any agent skill).
+Mirror of <https://github.com/unclecode/crawl4ai/tree/develop/docs/md_v2>, taken 2026-09-27 by `scripts/sync_docs_repo.py` (project tool; independent of any agent skill).
 48 pages from commit `1f68e5bd` (2026-09-25); page bodies are the upstream Markdown, with sibling-page links re-pointed at their docs.crawl4ai.com URL.
 Pages outside `SECTIONS` in `scripts/sync_docs_repo.py`, or listed in its `CURATED_OUT`, are not carried (44 upstream page(s) excluded by policy) — see below.
 Files are flat (`<section>-<page>.md`) so every reference stays one level deep.
