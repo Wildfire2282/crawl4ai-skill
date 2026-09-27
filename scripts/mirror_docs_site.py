@@ -374,13 +374,23 @@ def page_digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def write_text(path: Path, text: str) -> None:
+    """Write the bytes this script intends to write, on every platform.
+
+    `Path.write_text` translates "\\n" to os.linesep, so on Windows the same page lands on disk as
+    CRLF. The manifest records sha256 over those bytes, which would make a Windows run and a Linux run
+    disagree about all 48 pages; a mirror must hash the same content wherever it is built.
+    """
+    path.write_text(text, encoding="utf-8", newline="\n")
+
+
 def write_manifest(path: Path, rows: list[tuple[str, str, str]]) -> None:
     """{rel: {url, title, sha256, bytes}} for every mirrored page, sorted by path."""
     manifest = {}
     for rel, url, title in sorted(rows):
         page = path.parent / rel
         manifest[rel] = {"url": url, "title": title, "sha256": page_digest(page), "bytes": page.stat().st_size}
-    path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    write_text(path, json.dumps(manifest, indent=2) + "\n")
 
 
 def reindex(out: Path, root: str | None) -> int:
@@ -412,11 +422,11 @@ def reindex(out: Path, root: str | None) -> int:
         return 2
     index_rows.sort()
     resolved_root = root.rstrip("/") + "/" if root else f"{urlparse(index_rows[0][1]).scheme}://{urlparse(index_rows[0][1]).netloc}/"
-    (out / INDEX_NAME).write_text(
+    write_text(
+        out / INDEX_NAME,
         build_index(index_rows, fetched, None, resolved_root, out,
                     f"offline reindex, {len(removed)} file(s) removed"
                     if removed else "offline reindex, mirror already matches the policy"),
-        encoding="utf-8",
     )
     write_manifest(out / MANIFEST_NAME, index_rows)
     for line in removed:
@@ -494,16 +504,16 @@ def main() -> int:
             continue
         note = stub_note(url, html) if html else ""
         text, title = render(url, extra, markdown, fetched, note)
-        (out / rel).write_text(text, encoding="utf-8")
+        write_text(out / rel, text)
         index_rows.append((rel.as_posix(), url, title))
         print(f"[ok]   {rel.as_posix():<48} {len(markdown):>7} chars  {title}", file=sys.stderr)
 
     index_rows.sort()
     removed = prune_stale({Path(rel) for rel, _, _ in index_rows}, out)
-    (out / INDEX_NAME).write_text(
+    write_text(
+        out / INDEX_NAME,
         build_index(index_rows, fetched, len(rows), root, out,
                     f"{len(curated)} upstream page(s) excluded by policy"),
-        encoding="utf-8",
     )
     write_manifest(out / MANIFEST_NAME, index_rows)
 

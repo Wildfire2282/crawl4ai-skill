@@ -1,5 +1,7 @@
 # crawl4ai skill + docs pipeline
 
+[![skill-check](https://github.com/Wildfire2282/crawl4ai-skill/actions/workflows/skill-check.yml/badge.svg)](https://github.com/Wildfire2282/crawl4ai-skill/actions/workflows/skill-check.yml)
+
 Standalone project for the agent skill and the upstream documentation it is derived from. Every path
 below is relative to this directory; the crawlers that used to share the tree (`blog_monitor.py`,
 `intranet_harvest.py`) stay in their own workspace.
@@ -39,6 +41,8 @@ flowchart LR
 | `scripts/mirror_docs_site.py` | Fetch the site (sitemap-driven), apply `CURATED_OUT`, rebuild index and manifest, `--reindex` offline |
 | `scripts/update_skill.py` | Snapshot diff, coverage merge, gates, stamps, optional probes and agent pass, report |
 | `reports/skill-sync.md` | Latest run: upstream changes mapped to skill files, gate output, actions |
+| `.gitattributes` | LF on both ends of git: the manifest hashes page bytes, so a checkout must not rewrite them |
+| `LICENSE` | Apache-2.0, the license of the upstream project this mirror is derived from |
 | `.evalcheck/` | Calibration runs for the eval suite and the recorded trigger transcripts; scratch, not shipped with the skill |
 
 The skill has to stay at `.agents/skills/<name>/SKILL.md`: that is the path the agent runtime
@@ -83,10 +87,19 @@ style violation turns the gate red, the stamps stay as they were, and the report
 Prerequisites for the update workflow:
 
 - Repository variable `SKILL_AGENT_CMD` (optional) — an agent CLI prefix, for example `omp -p --no-session`. Without it the workflow stops after the deterministic stages and the report holds the actions.
-- The built-in `GITHUB_TOKEN` needs `contents: write` and `pull-requests: write`; both are requested in the workflow file.
+- Repository secret `SKILL_SYNC_TOKEN` (optional) — a PAT with `repo` scope, used for the branch push and the pull request. GitHub runs no workflow for a push or a pull request made with the built-in `GITHUB_TOKEN`, so without this the scheduled pull request arrives with no `skill-check` run. The workflow falls back to `GITHUB_TOKEN`.
+- The built-in `GITHUB_TOKEN` needs `contents: write` and `pull-requests: write`; both are requested in the workflow file, and the repository setting *Actions → General → Workflow permissions* must allow read and write.
 
 ## Curation policy
 
 `CURATED_OUT` in `scripts/mirror_docs_site.py` lists the upstream pages this project deliberately
 does not carry — release notes, migration guides, site and legal pages, superseded snapshots — each
 with a reason. The workflow fetches 41 pages fewer than the sitemap offers and never restores them.
+
+## License
+
+Apache-2.0 — see `LICENSE`. The skill, the scripts and the workflow files are original to this
+project. `docs/crawl4ai/` is a verbatim mirror of <https://docs.crawl4ai.com>, the documentation of
+[crawl4ai](https://github.com/unclecode/crawl4ai) (Apache-2.0, copyright its contributors); every
+mirrored page keeps its `source:` URL in its front matter, and the only edits are the removal of the
+pages `CURATED_OUT` lists and the front matter the crawler adds.
