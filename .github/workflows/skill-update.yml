@@ -33,9 +33,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # A PAT when one is configured: a push made with GITHUB_TOKEN triggers no workflow, so the
-          # pull request opened below would never see skill-check.
-          token: ${{ secrets.SKILL_SYNC_TOKEN || github.token }}
 
       - uses: actions/setup-python@v5
         with:
@@ -68,7 +65,7 @@ jobs:
 
       - name: Open or update the pull request
         env:
-          GH_TOKEN: ${{ secrets.SKILL_SYNC_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           if git diff --quiet && git diff --cached --quiet; then

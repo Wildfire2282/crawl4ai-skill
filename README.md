@@ -87,8 +87,10 @@ style violation turns the gate red, the stamps stay as they were, and the report
 Prerequisites for the update workflow:
 
 - Repository variable `SKILL_AGENT_CMD` (optional) — an agent CLI prefix, for example `omp -p --no-session`. Without it the workflow stops after the deterministic stages and the report holds the actions.
-- Repository secret `SKILL_SYNC_TOKEN` (optional) — a PAT with `repo` scope, used for the branch push and the pull request. GitHub runs no workflow for a push or a pull request made with the built-in `GITHUB_TOKEN`, so without this the scheduled pull request arrives with no `skill-check` run. The workflow falls back to `GITHUB_TOKEN`.
-- The built-in `GITHUB_TOKEN` needs `contents: write` and `pull-requests: write`; both are requested in the workflow file, and the repository setting *Actions → General → Workflow permissions* must allow read and write.
+- The repository setting *Settings → Actions → General → Allow GitHub Actions to create and approve pull requests* must be on: with it off, the branch is pushed and the run then dies on `pull request create failed: GraphQL: GitHub Actions is not permitted to create or approve pull requests`.
+- The built-in `GITHUB_TOKEN` needs `contents: write` and `pull-requests: write`; both workflows declare exactly those, so the repository default may stay read-only — the manual `skill-update` run that pushed `skill-sync/upstream-docs` did so while the default was still read-only.
+
+The pull request carries `reports/skill-sync.md` as its body, and `skill-check` runs on it (a `pull_request` event from a `GITHUB_TOKEN`-authored pull request still starts the workflow; the push that created the branch does not).
 
 ## Curation policy
 
