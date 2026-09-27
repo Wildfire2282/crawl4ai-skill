@@ -57,17 +57,17 @@ def parse_transcript(raw: str) -> tuple[bool, str]:
     """Return (skill_body_read, final_assistant_text) from a newline-delimited JSON transcript."""
     skill_read = False
     texts: list[str] = []
-    for line in raw.splitlines():
-        line = line.strip()
+    for raw_line in raw.splitlines():
+        line = raw_line.strip()
         if not line.startswith("{"):
             continue
         try:
             event = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if event.get("type") == "tool_execution_end" and event.get("toolName") == "read":
-            if SKILL_BODY.search(json.dumps(event.get("result", {}))):
-                skill_read = True
+        if (event.get("type") == "tool_execution_end" and event.get("toolName") == "read"
+                and SKILL_BODY.search(json.dumps(event.get("result", {})))):
+            skill_read = True
         if event.get("type") == "message_end" and event.get("message", {}).get("role") == "assistant":
             texts += [p["text"] for p in event["message"].get("content", []) if p.get("type") == "text"]
     return skill_read, (texts[-1] if texts else "")
@@ -124,7 +124,8 @@ def main() -> int:
         for _ in range(args.runs):
             try:
                 proc = subprocess.run([*cmd, q["query"]], capture_output=True, text=True,
-                                      encoding="utf-8", errors="replace", timeout=args.timeout)
+                                      encoding="utf-8", errors="replace", timeout=args.timeout,
+                                      check=False)  # a non-zero exit is recorded, not raised
             except subprocess.TimeoutExpired:
                 skipped.append(f"q{q['id']}: no result after {args.timeout}s")
                 continue
@@ -149,7 +150,7 @@ def main() -> int:
                         "triggers": triggers, "runs": args.runs, "completed": completed,
                         "trigger_rate": rate, "passed": passed})
         if not args.json:
-            print(f"q{q['id']:<3} {q['split']:<10} should_trigger={str(q['should_trigger']):<5} "
+            print(f"q{q['id']:<3} {q['split']:<10} should_trigger={q['should_trigger']!s:<5} "
                   f"rate={rate:.2f} ({completed}/{args.runs} runs) {'PASS' if passed else 'FAIL'}")
 
     if args.json:

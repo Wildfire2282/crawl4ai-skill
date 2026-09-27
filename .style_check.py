@@ -19,22 +19,23 @@ files = sorted([skill / "SKILL.md",
                 skill / "scripts/check_api.py",
                 skill / "evals/README.md",
                 skill / "evals/run_trigger.py"])
-PRONOUNS = re.compile(r"\b(you|your|yours|yourself|we|us|our|ours)\b", re.I)
-CONTRACTIONS = re.compile(r"\b\w+n't\b|\b(it|that|there|what|let|here|who|this|they)'s\b", re.I)
+PRONOUNS = re.compile(r"\b(you|your|yours|yourself|we|us|our|ours)\b", re.IGNORECASE)
+CONTRACTIONS = re.compile(r"\b\w+n't\b|\b(it|that|there|what|let|here|who|this|they)'s\b", re.IGNORECASE)
 COLLOQUIAL = re.compile(r"\b(simply|easily|basically|really|very|pretty|a lot|lots of|obviously|of course|"
                         r"bites?|cheap|grab|stuff|nice|good idea|in order to|it is worth|remember that|"
-                        r"note that|keep in mind|aim for|try to|make sure)\b", re.I)
+                        r"note that|keep in mind|aim for|try to|make sure)\b", re.IGNORECASE)
 EMOJI = re.compile("[\U0001F300-\U0001FAFF\u2600-\u27BF]")
 issues = 0
 
 
 def prose(t: str) -> str:
-    t = re.sub(r"```.*?```", "", t, flags=re.S)
+    t = re.sub(r"```.*?```", "", t, flags=re.DOTALL)
     return re.sub(r"`[^`]*`", "", t)
 
 
 for f in files:
-    text = f.read_text(encoding="utf-8"); body = prose(text)
+    text = f.read_text(encoding="utf-8")
+    body = prose(text)
     found = []
     for label, pat in (("pronoun", PRONOUNS), ("contraction", CONTRACTIONS), ("colloquial", COLLOQUIAL), ("emoji", EMOJI)):
         for m in pat.finditer(body):
@@ -43,6 +44,7 @@ for f in files:
         found.append("target-version repeated")
     print(f"{f.relative_to(skill).as_posix():<28} lines={len(text.splitlines()):>4}")
     for i in found:
-        print("   ", i); issues += 1
+        print("   ", i)
+        issues += 1
 print("issue count:", issues)
 raise SystemExit(1 if issues else 0)

@@ -18,10 +18,10 @@ from __future__ import annotations
 
 import argparse
 import importlib
-import importlib.metadata as metadata
 import inspect
 import json
 import sys
+from importlib import metadata
 
 # (module, attribute) — the import paths and names used across SKILL.md and references/
 # --- generated: imports (scripts/update_skill.py unions the curated list with cited names) ---
@@ -301,7 +301,9 @@ def check() -> tuple[dict, int]:
         if not hasattr(module, attr):
             problems.append(f"{module_name}.{attr} is missing")
 
-    import crawl4ai  # noqa: E402  (after the importability check above)
+    # Imported here, not at module level: a package that will not import has to exit 2 above, not
+    # fail the whole run with a traceback before the version report is printed.
+    import crawl4ai
 
     for name, params in (("CrawlerRunConfig", RUN_CONFIG_PARAMS), ("BrowserConfig", BROWSER_CONFIG_PARAMS)):
         cls = getattr(crawl4ai, name, None)

@@ -1,0 +1,35 @@
+# Lint standard for this project: the pipeline scripts, the skill and the eval tools.
+#
+# The unattended pipeline does not run a linter — `.github/workflows/skill-check.yml` is the gate list —
+# so this file is what an editor, a contributor or `ruff check` in the project root uses. It selects
+# families the code base already satisfies, so a clean run means "nothing has drifted", not "someone
+# has not adopted a new style".
+target-version = "py310"
+
+# The mirror is upstream Markdown, not code this project owns: it is never linted, even though ruff
+# reads Python blocks out of Markdown.
+exclude = ["docs"]
+
+[lint]
+select = [
+    "E4",  # pycodestyle: imports
+    "E7",  # pycodestyle: statements
+    "E9",  # pycodestyle: runtime (syntax) errors
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "RUF", # ruff's own rules
+    "ISC", # flake8-implicit-str-concat
+    "PLW", # pylint: warnings
+    "BLE", # flake8-blind-except: the broad catches that are deliberate carry a noqa with a reason
+    "FURB",# refurb
+    "DTZ", # flake8-datetimez
+]
+ignore = [
+    # `date.today()` is deliberate at every site that uses it: the front matter's `fetched:` date, the
+    # record's `synced` date and the report's `generated` date all mean "the calendar day of the
+    # machine that observed this", so they are naive by design. A fixed zone would make a stamp depend
+    # on the reader's offset instead of on the observation.
+    "DTZ011",
+]
