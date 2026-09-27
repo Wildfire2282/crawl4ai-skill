@@ -6,4 +6,4 @@
 # for a reason the pull request did not cause.
 crawl4ai>=0.9.4,<1
 skills-ref==0.1.1
-ruff==0.16.6
+ruff==0.16.8
