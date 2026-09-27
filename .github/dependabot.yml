@@ -1,0 +1,16 @@
+# Version updates. The gates introspect the installed `crawl4ai` and run `skills-ref` over the
+# skill, so both dependencies are pinned in requirements.txt and a bump is a change the pull request
+# has to prove: skill-check runs the same gates here as it does on main.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

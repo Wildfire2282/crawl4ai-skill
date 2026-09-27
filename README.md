@@ -64,6 +64,7 @@ committed state, so no change is ever marked as processed that was not.
 | `reports/skill-sync.md` | Latest run: upstream changes mapped to skill files, gate output, actions |
 | `prompts/skill-sync/` | The update prompt kit: five stages the agent pass follows, entry point `00-overview.md` |
 | `opencode.jsonc` | Tool permissions for the opencode 2 agent pass, native V2 form: `external_directory` allowed (the agent reads the installed package outside the checkout), `git push` / `git commit` denied. The workflow passes `--auto`, which auto-approves the remaining `ask` rules while a `deny` stays enforced |
+| `.github/dependabot.yml` | Version updates: a weekly pull request for `requirements.txt` and one for the workflow actions, each proving itself against `skill-check` before it can merge |
 | `.style_check.py` | Prose gate: pronouns, contractions, filler, emoji, a repeated version target. Exits non-zero on an issue |
 | `.gitattributes` | LF on both ends of git: the manifest hashes page bytes, so a checkout must not rewrite them |
 | `LICENSE` | Apache-2.0, the license of the upstream project this mirror is derived from |
@@ -152,6 +153,25 @@ Prerequisites for the update workflow:
   `muse-spark-1.2-contributor-free` and `jev-1.13-free` exit 1 with `Model unavailable` — which is why
   the MiMo slot in the chain names the 2.6-flash id. An unavailable id costs one attempt (~1 s) and
   nothing else: the attempt is discarded and the next model continues.
+
+## Repository settings
+
+The repository offers what the pipeline uses. Anything that reads the tree is on:
+
+| Feature | State | Why |
+| --- | --- | --- |
+| Issues, Wiki, Projects | off | a drift report lands in `reports/skill-sync.md` and the skill's upstream bugs belong to `unclecode/crawl4ai`; the documentation is `docs/crawl4ai/`, not a wiki, and no board tracks the work |
+| Actions | on, `GITHUB_TOKEN` read-only by default | a workflow has to ask for `contents: write` itself (`skill-update.yml` does, `skill-check.yml` does not) |
+| CodeQL default setup (`python`, `actions`) | on | the three pipeline scripts are scanned on every push to `main` and every pull request |
+| Dependabot alerts and security updates | on | `requirements.txt` pins the two packages both gates introspect |
+| Dependabot version updates | `.github/dependabot.yml`, weekly | one pull request per ecosystem, gated by `skill-check` |
+| Secret scanning and push protection | on | the repository is public, so a leaked credential would be public with it |
+| Branch ruleset on `main` | none | the update workflow merges itself by pushing; a rule that requires a pull request would stall the scheduled run |
+
+Validity checks and non-provider patterns stay off: the repository settings page exposes only the
+master secret scanning switch and push protection, and the REST API accepts both fields in
+`security_and_analysis` without applying them (`secret_scanning_validity_checks` is not in the writable
+schema). Recheck after the account gains Secret Protection.
 
 ## Prompt kit
 
