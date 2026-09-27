@@ -46,7 +46,7 @@ jobs:
     steps:
       # No persisted credential: the agent runs with broad tool permissions in this checkout, so it
       # must not hold a push token. The credential is installed only for the initial pull and the push.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
