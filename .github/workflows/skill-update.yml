@@ -162,7 +162,9 @@ jobs:
           git push origin "HEAD:$GITHUB_REF_NAME"
 
       - name: Keep the report of a failed run
-        if: failure()
+        # `steps.sync.outcome`, not failure(): the step above carries continue-on-error, so the job
+        # status is still success here and failure() would skip the upload on the one run that needs it.
+        if: steps.sync.outcome == 'failure'
         uses: actions/upload-artifact@v7
         with:
           name: skill-sync-report

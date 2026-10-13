@@ -71,8 +71,11 @@ CANDIDATE_MODULES = (
 REGION = "# --- generated: {name} (scripts/update_skill.py unions the curated list with cited names) ---"
 TOKEN = re.compile(r"`([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)`")
 REJECTED_FLAGS = ("bypass_cache", "disable_cache", "no_cache_read", "no_cache_write")
+# The expectation each probe is judged against. It is the number the references quote, kept here as
+# the gate's own copy: a drift is a maintainer edit to this tuple and to the prose together, because
+# the verdict is built from these values before the agent pass and is not re-read from them.
 PROBES = (
-    ("example.com default crawl: raw_markdown length", 166),
+    ("example.com default crawl: raw_markdown length", 953),
     ('example.com css_selector="main": raw_markdown length', 1),
     ("news.ycombinator.com JsonCss tr.athing record count", 30),
 )
@@ -628,7 +631,8 @@ def actions_for(state: dict) -> list[str]:
             actions.append(f"fix the {label} failure listed above; nothing was stamped")
     for claim, documented, observed in state["probes"]:
         if documented != observed:
-            actions.append(f"re-observe `{claim}` in the references (documented {documented}, observed {observed})")
+            actions.append(f"re-observe `{claim}` in the references and in `PROBES` "
+                           f"(scripts/update_skill.py) (documented {documented}, observed {observed})")
     if state.get("probe_error"):
         actions.append(f"probes did not run ({state['probe_error']}); re-run with network and browsers before merging")
     if state["pending_coverage"]:
