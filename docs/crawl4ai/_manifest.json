@@ -163,9 +163,9 @@
     "path": "docs/md_v2/api/crawl-result.md",
     "url": "https://docs.crawl4ai.com/api/crawl-result/",
     "title": "`CrawlResult` Reference",
-    "blob": "f061836c98761ca602dfdbca3c5869fcd63918a9",
-    "sha256": "af7da303777c4528b47f525164fe329083a9df02ae166f1838647895ebd40b6b",
-    "bytes": 16648
+    "blob": "a7345e21767f96d9ae2443210400bf3d6ffc0f57",
+    "sha256": "5247c619579c9bf35a50203bfad586724fc1e3bf3daa0a03dfcbe0229f930757",
+    "bytes": 16718
   },
   "api-digest.md": {
     "path": "docs/md_v2/api/digest.md",
@@ -243,9 +243,9 @@
     "path": "docs/md_v2/core/crawler-result.md",
     "url": "https://docs.crawl4ai.com/core/crawler-result/",
     "title": "Crawl Result and Output",
-    "blob": "79f7231854eb5332f42934134c7e0e3c63ff6779",
-    "sha256": "3680d2e3e36a934efa54010b9229a1ea1a0229ae41cc804c86b026890d93da05",
-    "bytes": 15806
+    "blob": "2a3f5e922879201340439a7c0b7634094ee4d11c",
+    "sha256": "0383935d2afd20a4b7ff9c1cfe4593fcf12c4425c1c5ccbe257bab3519ab072e",
+    "bytes": 15876
   },
   "core-deep-crawling.md": {
     "path": "docs/md_v2/core/deep-crawling.md",

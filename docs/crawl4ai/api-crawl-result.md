@@ -1,7 +1,7 @@
 ---
 source: https://docs.crawl4ai.com/api/crawl-result/
 title: "`CrawlResult` Reference"
-fetched: 2026-09-28
+fetched: 2026-10-13
 ---
 
 # `CrawlResult` Reference
@@ -17,8 +17,8 @@ class CrawlResult(BaseModel):
     success: bool
     cleaned_html: Optional[str] = None
     fit_html: Optional[str] = None  # Preprocessed HTML optimized for extraction
-    media: Dict[str, List[Dict]] = {}
-    links: Dict[str, List[Dict]] = {}
+    media: Dict[str, List[Dict]] = {"images": [], "videos": [], "audios": []}
+    links: Dict[str, List[Dict]] = {"internal": [], "external": []}
     downloaded_files: Optional[List[str]] = None
     screenshot: Optional[str] = None
     pdf : Optional[bytes] = None
