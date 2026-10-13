@@ -96,15 +96,15 @@ async def main():
 asyncio.run(main())
 ```
 
-`[verified: run]` `https://example.com`: `success=True`, `status_code=200`, `len(result.markdown.raw_markdown)=166`. Add `css_selector="main"` only after confirming the target page contains that container; see the `css_selector` invariant below.
+`[verified: run]` `https://example.com`: `success=True`, `status_code=200`, `len(result.markdown.raw_markdown)=953`. Add `css_selector="main"` only after confirming the target page contains that container; see the `css_selector` invariant below.
 
 ## Expected outputs
 
 | Input | Configuration | Observed output | Status |
 | --- | --- | --- | --- |
-| `https://example.com` | defaults, `CacheMode.BYPASS` | `success=True`, `status_code=200`, Markdown 166 chars, first line `# Example Domain` | `[verified: run]` |
+| `https://example.com` | defaults, `CacheMode.BYPASS` | `success=True`, `status_code=200`, Markdown 953 chars | `[verified: run]` |
 | `https://news.ycombinator.com` | `JsonCssExtractionStrategy`, `baseSelector="tr.athing"`, fields `title` (text) and `url` (attribute `href`) | 30 records; record 0 `{"title": "Replacing the old battery on rechargeable bike lights", "url": "https://jvns.ca/blog/..."}` | `[verified: run]` |
-| `["https://example.com", "https://example.org"]` | `arun_many` + `MemoryAdaptiveDispatcher(max_session_permit=3)` | both `success=True`, both `status_code=200`, Markdown 166 chars each | `[verified: run]` |
+| `["https://example.com", "https://example.org"]` | `arun_many` + `MemoryAdaptiveDispatcher(max_session_permit=3)` | both `success=True`, both `status_code=200`, Markdown 953 chars each | `[verified: run]` |
 
 ## Invariants and failure modes
 

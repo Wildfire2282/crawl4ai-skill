@@ -13,7 +13,7 @@ result = await crawler.arun("https://example.com", config=config)
 print(result.markdown.raw_markdown)
 ```
 
-Result: `[verified: run]` `success=True`, `status_code=200`, `len(result.markdown.raw_markdown)=166`.
+Result: `[verified: run]` `success=True`, `status_code=200`, `len(result.markdown.raw_markdown)=953`.
 
 Add `css_selector="main"` (or `"article"`, `"#content"`) when the page has a content container; otherwise site navigation enters the Markdown. A selector that matches nothing returns `success=True` with a 1-char Markdown `[verified: run]` — confirm the element exists in `result.html` first. Read `result.cleaned_html` when the Markdown is shorter than the page content.
 
@@ -34,7 +34,7 @@ for result in outcome:                      # awaited result is an iterable cont
     print(result.url, result.success, result.status_code)
 ```
 
-Result: `[verified: run]` two URLs through `MemoryAdaptiveDispatcher(max_session_permit=3)`: both `success=True`, `status_code=200`, 166 chars each.
+Result: `[verified: run]` two URLs through `MemoryAdaptiveDispatcher(max_session_permit=3)`: both `success=True`, `status_code=200`, 953 chars each.
 
 Alternatives: `SemaphoreDispatcher(semaphore_count=5)` for fixed concurrency; `stream=True` on the call to consume results as an async generator (normalise the return shape at one call site).
 
@@ -233,7 +233,7 @@ async with AsyncWebCrawler(crawler_strategy=strategy) as crawler:
     result = await crawler.arun("https://example.com", config=config)
 ```
 
-Result: `[verified: run]` `success=True`, `status_code=200`, Markdown 166 chars.
+Result: `[verified: run]` `success=True`, `status_code=200`, Markdown 953 chars.
 
 Bot defenses usually require stealth, residential proxies and reduced concurrency together.
 
@@ -259,7 +259,7 @@ second = await crawler.arun(url, config=config)   # cache_status="hit_validated"
 print(second.cache_status, second.cached_at, second.head_fingerprint)
 ```
 
-Result: `[verified: run]` `https://example.org` on a cold cache: first run `cache_status="miss"`, `cached_at=None`; second run logs `Cache validated: Server returned 304 Not Modified`, reports `cache_status="hit_validated"` with `cached_at` set and a 166-char Markdown. A URL whose copy is already warm (`https://example.com` at the time of writing) reports `cache_status="hit_validated"` on the first call too. Dropping `check_cache_freshness` turns the second run into `cache_status="hit"` — no origin contact, no `[FETCH]` line, ~0.03s `[verified: run]`.
+Result: `[verified: run]` `https://example.org` on a cold cache: first run `cache_status="miss"`, `cached_at=None`; second run logs `Cache validated: Server returned 304 Not Modified`, reports `cache_status="hit_validated"` with `cached_at` set and a 953-char Markdown. A URL whose copy is already warm (`https://example.com` at the time of writing) reports `cache_status="hit_validated"` on the first call too. Dropping `check_cache_freshness` turns the second run into `cache_status="hit"` — no origin contact, no `[FETCH]` line, ~0.03s `[verified: run]`.
 
 Mechanism: the cached copy is revalidated with conditional requests (`ETag`/`Last-Modified`) and, when the server answers 200 instead of 304, by comparing a fingerprint of the new `<head>` against the stored one `[verified: source]`. `result.head_fingerprint` carries that value.
 
